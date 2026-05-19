@@ -10,53 +10,41 @@ const path = require('path');
 const fs = require('fs');
 
 // =========================================================
-// EDIT THIS CONFIG ONLY - no .env file required
+// DIRECT CONFIGURATION
 // =========================================================
 const APP_CONFIG = {
-    // Render's default web-service port is 10000. For local 5000, change this to 5000.
     PORT: 5000,
     HOST: '0.0.0.0',
-
-    // Paste your full Neon PostgreSQL connection string here.
     DATABASE_URL: 'postgresql://neondb_owner:npg_v7AsBi1gJyMS@ep-jolly-cloud-ap23jjt4-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
-
-    // Optional. Leave blank and the app will auto-detect from the current request.
-    // Example: 'https://your-app-name.onrender.com'
     PUBLIC_BASE_URL: 'https://elib-fsd-project-sem3.onrender.com',
-
-    // Gmail OTP settings. EMAIL_PASS must be a Gmail App Password, not your normal password.
     EMAIL_USER: 'dixitp1311@gmail.com',
     EMAIL_PASS: 'whjwkdhqofnqpewu',
     EMAIL_FROM: 'bookheaven2026@gmail.com',
     SMTP_HOST: 'smtp.gmail.com',
     SMTP_PORT: 465,
     SMTP_SECURE: true,
-
-    // Set true only while testing locally if you want OTPs printed in terminal.
     LOG_OTP_TO_CONSOLE: false
 };
-// =========================================================
 
 const app = express();
 const PORT = APP_CONFIG.PORT;
-const HOST = APP_CONFIG.HOST || '0.0.0.0';
+const HOST = APP_CONFIG.HOST;
 
 // --- MIDDLEWARE ---
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(__dirname)); // Serve HTML files from root
+app.use(express.static(__dirname));
 
-// --- STATIC FILES (For uploaded images) ---
+// --- STATIC FILES ---
 if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 app.use('/uploads', express.static('uploads'));
 
-// --- DATABASE CONNECTION (Neon PostgreSQL) ---
+// --- DATABASE CONNECTION ---
 const db = new Pool({
     connectionString: APP_CONFIG.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// Test DB connection on startup
 db.connect()
     .then(client => {
         console.log('✅ Connected to Neon PostgreSQL');
@@ -64,12 +52,12 @@ db.connect()
     })
     .catch(err => console.error('❌ DB Connection Error:', err.message));
 
-// Helper: run a query and return rows
 const query = async (sql, params = []) => {
     const result = await db.query(sql, params);
     return result.rows;
 };
 
+// --- SCHEMA SETUP ---
 const ensureSchema = async () => {
     await query(`
         ALTER TABLE users
@@ -105,67 +93,43 @@ const buildSafeUser = async (user) => {
 };
 
 const getBaseUrl = (req) => {
-    const configuredUrl = cleanConfig('PUBLIC_BASE_URL').replace(/\/$/, '');
+    const configuredUrl = APP_CONFIG.PUBLIC_BASE_URL.replace(/\/$/, '');
     if (configuredUrl) return configuredUrl;
     return `${req.protocol}://${req.get('host')}`;
 };
 
 // --- EMAIL CONFIGURATION ---
-const cleanConfig = (key) => String(APP_CONFIG[key] || '').trim();
-
 const getEmailConfig = () => {
-    const host = cleanConfig('SMTP_HOST') || 'smtp.gmail.com';
-    const port = Number(APP_CONFIG.SMTP_PORT || 465);
-    const secure = Boolean(APP_CONFIG.SMTP_SECURE);
-    const user = cleanConfig('EMAIL_USER');
-    let pass = cleanConfig('EMAIL_PASS');
+    const host = APP_CONFIG.SMTP_HOST;
+    const port = APP_CONFIG.SMTP_PORT;
+    const secure = APP_CONFIG.SMTP_SECURE;
+    const user = APP_CONFIG.EMAIL_USER;
+    let pass = APP_CONFIG.EMAIL_PASS;
 
-    // Gmail app passwords are often copied as "abcd efgh ijkl mnop".
-    // SMTP auth expects the continuous 16-character value.
     if (/gmail\.com$/i.test(host) || /smtp\.gmail\.com$/i.test(host)) {
         pass = pass.replace(/\s+/g, '');
     }
 
-    return {
-        configured: Boolean(user && pass),
-        host,
-        port,
-        secure,
-        user,
-        pass,
-        from: cleanConfig('EMAIL_FROM') || user
-    };
+    return { host, port, secure, user, pass, from: APP_CONFIG.EMAIL_FROM || user };
 };
 
 const createEmailTransporter = () => {
     const emailConfig = getEmailConfig();
-    if (!emailConfig.configured) return null;
-
     return nodemailer.createTransport({
         host: emailConfig.host,
         port: emailConfig.port,
         secure: emailConfig.secure,
-        auth: {
-            user: emailConfig.user,
-            pass: emailConfig.pass
-        }
+        auth: { user: emailConfig.user, pass: emailConfig.pass }
     });
 };
 
 const verifyEmailTransport = async () => {
-    const emailConfig = getEmailConfig();
     const transporter = createEmailTransporter();
-
-    if (!transporter) {
-        console.warn('Email service is not configured. Edit APP_CONFIG.EMAIL_USER and APP_CONFIG.EMAIL_PASS in server.js.');
-        return;
-    }
-
     try {
         await transporter.verify();
-        console.log(`Email service ready via ${emailConfig.host}:${emailConfig.port}`);
+        console.log(`✅ Email service ready via ${APP_CONFIG.SMTP_HOST}:${APP_CONFIG.SMTP_PORT}`);
     } catch (error) {
-        console.error('Email transporter error:', error.message);
+        console.error('❌ Email transporter error:', error.message);
     }
 };
 
@@ -185,22 +149,15 @@ const upload = multer({ storage });
 
 // --- HELPERS ---
 const getNow = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
-const addMonths = (months) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + months);
-    return d.toISOString().slice(0, 19).replace('T', ' ');
-};
 
 // =============================================
 // ROUTES
 // =============================================
 
-// SERVE FRONTEND
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'profile.html')));
 
-// 1. GET ALL BOOKS
 app.get('/api/books', async (req, res) => {
     try {
         const rows = await query('SELECT * FROM books ORDER BY id');
@@ -211,68 +168,39 @@ app.get('/api/books', async (req, res) => {
 });
 
 app.get('/api/email-status', async (req, res) => {
-    const emailConfig = getEmailConfig();
     const transporter = createEmailTransporter();
-
-        if (!transporter) {
-            return res.json({
-                success: false,
-                configured: false,
-                message: 'Email is not configured. Edit APP_CONFIG.EMAIL_USER and APP_CONFIG.EMAIL_PASS in server.js.'
-            });
-        }
-
     try {
         await transporter.verify();
         res.json({
             success: true,
             configured: true,
-            host: emailConfig.host,
-            port: emailConfig.port,
-            from: emailConfig.from,
-            user: emailConfig.user.replace(/(^.).*(@.*$)/, '$1***$2'),
-            message: 'Email service is ready.'
+            host: APP_CONFIG.SMTP_HOST,
+            port: APP_CONFIG.SMTP_PORT,
+            from: APP_CONFIG.EMAIL_FROM,
+            user: APP_CONFIG.EMAIL_USER.replace(/(^.).*(@.*$)/, '$1***$2')
         });
     } catch (err) {
-        res.json({
-            success: false,
-            configured: true,
-            host: emailConfig.host,
-            port: emailConfig.port,
-            message: err.message
-        });
+        res.json({ success: false, configured: true, message: err.message });
     }
 });
 
-// 2. SEND OTP
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ success: false, message: 'Email is required' });
 
     try {
-        const emailConfig = getEmailConfig();
         const transporter = createEmailTransporter();
-
-        if (!transporter) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email service is not configured. Edit APP_CONFIG.EMAIL_USER and APP_CONFIG.EMAIL_PASS in server.js.'
-            });
-        }
-
         const rows = await query('SELECT id FROM users WHERE email = $1', [email]);
         if (rows.length > 0) return res.json({ success: false, message: 'Email already exists' });
 
         const otp = String(Math.floor(100000 + Math.random() * 900000));
         otpStore[email] = otp;
         if (APP_CONFIG.LOG_OTP_TO_CONSOLE) {
-            console.log(`OTP generated for ${email}: ${otp}`);
-        } else {
-            console.log(`OTP generated for ${email}`);
+            console.log(`OTP for ${email}: ${otp}`);
         }
 
         const mailOptions = {
-            from: `"BookHeaven Support" <${emailConfig.from}>`,
+            from: `"BookHeaven Support" <${APP_CONFIG.EMAIL_FROM}>`,
             to: email,
             subject: 'Verify your BookHeaven Account',
             html: `<div style="font-family:sans-serif;padding:20px;background:#0f0e17;color:white;">
@@ -283,14 +211,9 @@ app.post('/api/send-otp', async (req, res) => {
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`OTP email sent to ${email}`);
         res.json({ success: true, message: 'OTP sent successfully!' });
     } catch (err) {
-        console.error(`OTP send error for ${email}:`, err.message);
-        const help = err.code === 'EAUTH'
-            ? ' Gmail rejected the login. Use a Gmail App Password, not your normal Gmail password.'
-            : '';
-        res.status(500).json({ success: false, message: 'Failed to send OTP: ' + err.message + help });
+        res.status(500).json({ success: false, message: 'Failed to send OTP: ' + err.message });
     }
 });
 
@@ -302,19 +225,8 @@ app.post('/api/verify-otp', (req, res) => {
     res.json({ success: true, message: 'OTP verified' });
 });
 
-// 3. REGISTER
 app.post('/api/register', async (req, res) => {
-    const {
-        username,
-        email,
-        password,
-        otp,
-        age,
-        favorite_author,
-        favorite_genre,
-        reading_goal,
-        reading_level
-    } = req.body;
+    const { username, email, password, otp, age, favorite_author, favorite_genre, reading_goal, reading_level } = req.body;
 
     if (!isOtpValid(email, otp)) {
         return res.json({ success: false, message: 'Invalid or expired OTP' });
@@ -333,29 +245,9 @@ app.post('/api/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const rows = await query(
-            `INSERT INTO users (
-                username,
-                email,
-                password,
-                membership_plan,
-                age,
-                favorite_author,
-                favorite_genre,
-                reading_goal,
-                reading_level,
-                created_at
-            ) VALUES ($1, $2, $3, 'free', $4, $5, $6, $7, $8, NOW())
-            RETURNING *`,
-            [
-                username,
-                email,
-                hashedPassword,
-                parsedAge,
-                favorite_author || null,
-                favorite_genre || null,
-                reading_goal || null,
-                reading_level || null
-            ]
+            `INSERT INTO users (username, email, password, membership_plan, age, favorite_author, favorite_genre, reading_goal, reading_level, created_at)
+             VALUES ($1, $2, $3, 'free', $4, $5, $6, $7, $8, NOW()) RETURNING *`,
+            [username, email, hashedPassword, parsedAge, favorite_author || null, favorite_genre || null, reading_goal || null, reading_level || null]
         );
         delete otpStore[email];
         const user = await buildSafeUser(rows[0]);
@@ -365,24 +257,18 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 4. LOGIN
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const rows = await query('SELECT * FROM users WHERE email = $1', [email]);
         if (rows.length === 0) {
-            return res.json({
-                success: false,
-                code: 'USER_NOT_FOUND',
-                message: 'No account found. Please register first.'
-            });
+            return res.json({ success: false, code: 'USER_NOT_FOUND', message: 'No account found. Please register first.' });
         }
 
         let user = rows[0];
         const match = await bcrypt.compare(password, user.password);
         if (!match) return res.json({ success: false, message: 'Invalid Email or Password' });
 
-        // Membership expiry check
         if (user.end_date && new Date(user.end_date) < new Date()) {
             await query("UPDATE users SET membership_plan='free', start_date=NULL, end_date=NULL WHERE id=$1", [user.id]);
             user.membership_plan = 'free';
@@ -398,7 +284,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 4b. CHANGE PASSWORD
 app.post('/api/change-password', async (req, res) => {
     const { email, oldPassword, newPassword } = req.body;
     try {
@@ -420,13 +305,11 @@ app.post('/api/change-password', async (req, res) => {
     }
 });
 
-// 5. USER DETAILS
 app.get('/api/user-details', async (req, res) => {
     const { email } = req.query;
     try {
         const rows = await query('SELECT * FROM users WHERE email=$1', [email]);
         if (rows.length === 0) return res.status(404).json({ success: false });
-
         res.json({ success: true, user: await buildSafeUser(rows[0]) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -434,17 +317,9 @@ app.get('/api/user-details', async (req, res) => {
 });
 
 app.put('/api/user-details', async (req, res) => {
-    const {
-        email,
-        username,
-        age,
-        favorite_author,
-        favorite_genre,
-        reading_goal,
-        reading_level
-    } = req.body;
-
+    const { email, username, age, favorite_author, favorite_genre, reading_goal, reading_level } = req.body;
     const parsedAge = Number.parseInt(age, 10);
+
     if (!email) return res.json({ success: false, message: 'Email is required' });
     if (!username || username.trim().length < 2) {
         return res.json({ success: false, message: 'Name must be at least 2 characters' });
@@ -455,37 +330,20 @@ app.put('/api/user-details', async (req, res) => {
 
     try {
         const rows = await query(
-            `UPDATE users
-             SET username=$1,
-                 age=$2,
-                 favorite_author=$3,
-                 favorite_genre=$4,
-                 reading_goal=$5,
-                 reading_level=$6
-             WHERE email=$7
-             RETURNING *`,
-            [
-                username.trim(),
-                parsedAge,
-                favorite_author || null,
-                favorite_genre || null,
-                reading_goal || null,
-                reading_level || null,
-                email
-            ]
+            `UPDATE users SET username=$1, age=$2, favorite_author=$3, favorite_genre=$4, reading_goal=$5, reading_level=$6
+             WHERE email=$7 RETURNING *`,
+            [username.trim(), parsedAge, favorite_author || null, favorite_genre || null, reading_goal || null, reading_level || null, email]
         );
 
         if (rows.length === 0) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
-
         res.json({ success: true, user: await buildSafeUser(rows[0]) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-// 6. UPDATE MEMBERSHIP & SAVE PAYMENT
 app.post('/api/update-membership-status', async (req, res) => {
     const { email, plan, end_date, price, item_name, purchasedBooks, payment_method } = req.body;
     const startDate = getNow();
@@ -493,27 +351,17 @@ app.post('/api/update-membership-status', async (req, res) => {
     const method = payment_method || 'Card';
 
     try {
-        await query(
-            'UPDATE users SET membership_plan=$1, start_date=$2, end_date=$3 WHERE email=$4',
-            [plan, startDate, endDate, email]
-        );
+        await query('UPDATE users SET membership_plan=$1, start_date=$2, end_date=$3 WHERE email=$4', [plan, startDate, endDate, email]);
 
-        // Save individual books
         const booksToSave = Array.isArray(purchasedBooks) ? purchasedBooks : [];
         for (const title of booksToSave) {
-            await query(
-                'INSERT INTO payments (user_email, item_name, amount, transaction_date, payment_method) VALUES ($1,$2,$3,$4,$5)',
-                [email, title, 0, startDate, method]
-            );
+            await query('INSERT INTO payments (user_email, item_name, amount, transaction_date, payment_method) VALUES ($1,$2,$3,$4,$5)',
+                [email, title, 0, startDate, method]);
         }
 
-        // Save main transaction
-        await query(
-            'INSERT INTO payments (user_email, item_name, amount, transaction_date, payment_method) VALUES ($1,$2,$3,$4,$5)',
-            [email, item_name || plan, price || 0, startDate, method]
-        );
+        await query('INSERT INTO payments (user_email, item_name, amount, transaction_date, payment_method) VALUES ($1,$2,$3,$4,$5)',
+            [email, item_name || plan, price || 0, startDate, method]);
 
-        // Return updated user
         const rows = await query('SELECT * FROM users WHERE email=$1', [email]);
         res.json({ success: true, user: await buildSafeUser(rows[0]) });
     } catch (err) {
@@ -521,7 +369,6 @@ app.post('/api/update-membership-status', async (req, res) => {
     }
 });
 
-// 7. DOWNLOAD HANDLER
 app.get('/api/download', async (req, res) => {
     const { url, filename } = req.query;
     try {
@@ -539,25 +386,7 @@ app.get('/api/download', async (req, res) => {
 
 app.get('/api/admin/users', async (req, res) => {
     try {
-        const rows = await query(`
-            SELECT
-                id,
-                username,
-                email,
-                membership_plan,
-                role,
-                start_date,
-                end_date,
-                age,
-                favorite_author,
-                favorite_genre,
-                reading_goal,
-                reading_level,
-                created_at,
-                last_login
-            FROM users
-            ORDER BY id
-        `);
+        const rows = await query(`SELECT id, username, email, membership_plan, role, start_date, end_date, age, favorite_author, favorite_genre, reading_goal, reading_level, created_at, last_login FROM users ORDER BY id`);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -566,38 +395,12 @@ app.get('/api/admin/users', async (req, res) => {
 
 app.get('/api/admin/stats', async (req, res) => {
     try {
-        const userStats = await query(`
-            SELECT
-                COUNT(*)::int AS total_users,
-                COUNT(*) FILTER (WHERE role = 'admin')::int AS admin_users,
-                COUNT(*) FILTER (
-                    WHERE membership_plan <> 'free'
-                    AND (end_date IS NULL OR end_date > NOW())
-                )::int AS active_members,
-                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS new_users
-            FROM users
-        `);
+        const userStats = await query(`SELECT COUNT(*)::int AS total_users, COUNT(*) FILTER (WHERE role = 'admin')::int AS admin_users, COUNT(*) FILTER (WHERE membership_plan <> 'free' AND (end_date IS NULL OR end_date > NOW()))::int AS active_members, COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS new_users FROM users`);
         const bookStats = await query('SELECT COUNT(*)::int AS total_books, COUNT(*) FILTER (WHERE is_free = 1)::int AS free_books FROM books');
-        const paymentStats = await query(`
-            SELECT
-                COUNT(*)::int AS total_payments,
-                COALESCE(SUM(amount), 0)::numeric AS total_revenue
-            FROM payments
-        `);
-        const recentPayments = await query(`
-            SELECT id, user_email, item_name, amount, transaction_date, payment_method
-            FROM payments
-            ORDER BY transaction_date DESC
-            LIMIT 5
-        `);
+        const paymentStats = await query(`SELECT COUNT(*)::int AS total_payments, COALESCE(SUM(amount), 0)::numeric AS total_revenue FROM payments`);
+        const recentPayments = await query(`SELECT id, user_email, item_name, amount, transaction_date, payment_method FROM payments ORDER BY transaction_date DESC LIMIT 5`);
 
-        res.json({
-            success: true,
-            users: userStats[0],
-            books: bookStats[0],
-            payments: paymentStats[0],
-            recentPayments
-        });
+        res.json({ success: true, users: userStats[0], books: bookStats[0], payments: paymentStats[0], recentPayments });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -607,10 +410,8 @@ app.post('/api/admin/add-book', async (req, res) => {
     const { title, author, category, cover_url, book_url, price, is_free, description } = req.body;
     const isFree = is_free === true || is_free === 1 || is_free === '1';
     try {
-        await query(
-            'INSERT INTO books (title, author, category, cover_url, book_url, price, is_free, description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-            [title, author, category || null, cover_url, book_url, price || 0, isFree ? 1 : 0, description || null]
-        );
+        await query('INSERT INTO books (title, author, category, cover_url, book_url, price, is_free, description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+            [title, author, category || null, cover_url, book_url, price || 0, isFree ? 1 : 0, description || null]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -630,10 +431,8 @@ app.put('/api/admin/edit-book/:id', async (req, res) => {
     const { title, author, category, cover_url, book_url, price, is_free, description } = req.body;
     const isFree = is_free === true || is_free === 1 || is_free === '1';
     try {
-        await query(
-            'UPDATE books SET title=$1, author=$2, category=$3, cover_url=$4, book_url=$5, price=$6, is_free=$7, description=$8 WHERE id=$9',
-            [title, author, category || null, cover_url, book_url, price || 0, isFree ? 1 : 0, description || null, req.params.id]
-        );
+        await query('UPDATE books SET title=$1, author=$2, category=$3, cover_url=$4, book_url=$5, price=$6, is_free=$7, description=$8 WHERE id=$9',
+            [title, author, category || null, cover_url, book_url, price || 0, isFree ? 1 : 0, description || null, req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false });
@@ -658,7 +457,7 @@ app.get('/api/admin/payments', async (req, res) => {
     }
 });
 
-// CAROUSEL
+// CAROUSEL ROUTES
 app.get('/api/carousel', async (req, res) => {
     try {
         const rows = await query('SELECT * FROM carousel_slides ORDER BY id DESC');
@@ -701,15 +500,13 @@ app.delete('/api/admin/carousel/:id', async (req, res) => {
 app.post('/api/qr/generate', (req, res) => {
     const txId = 'TXN_' + Math.floor(100000 + Math.random() * 900000);
     activeTransactions[txId] = 'PENDING';
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-    const paymentUrl = `${baseUrl}/mobile-payment/${txId}?amount=${req.body.amount}`;
+    const paymentUrl = `${APP_CONFIG.PUBLIC_BASE_URL}/mobile-payment/${txId}?amount=${req.body.amount}`;
     res.json({ success: true, txId, paymentUrl });
 });
 
 app.get('/mobile-payment/:txId', (req, res) => {
     const { txId } = req.params;
     const amount = req.query.amount || 0;
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirm Payment</title>
     <style>body{font-family:Inter,system-ui,sans-serif;background:#07051a;color:white;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
     .card{background:linear-gradient(145deg,#140f35,#0d0a28);padding:30px;border-radius:22px;text-align:center;width:100%;max-width:420px;box-shadow:0 24px 70px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12)}
@@ -721,7 +518,7 @@ app.get('/mobile-payment/:txId', (req, res) => {
     <div class="amount">Rs.${amount}</div>
     <button class="btn btn-confirm" onclick="updateStatus('SUCCESS')">Pay Securely</button>
     <button class="btn btn-cancel" onclick="updateStatus('FAILED')">Cancel Transaction</button></div>
-    <script>function updateStatus(s){fetch('${baseUrl}/api/qr/update/${txId}/'+s,{method:'POST'}).then(()=>{
+    <script>function updateStatus(s){fetch('${APP_CONFIG.PUBLIC_BASE_URL}/api/qr/update/${txId}/'+s,{method:'POST'}).then(()=>{
     document.body.innerHTML='<div style="text-align:center;padding:40px"><h1>'+(s==='SUCCESS'?'Paid!':'Cancelled')+'</h1><p>Check your desktop screen.</p></div>';})}</script>
     </body></html>`);
 });
@@ -739,14 +536,13 @@ app.get('/api/qr/status/:txId', (req, res) => {
 const startServer = async () => {
     try {
         await ensureSchema();
-        console.log('Schema ready');
+        console.log('✅ Schema ready');
     } catch (err) {
-        console.error('Schema sync warning:', err.message);
+        console.error('⚠️ Schema sync warning:', err.message);
     }
 
     app.listen(PORT, () => {
-        const url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-        console.log(`BookHeaven running at ${url}`);
+        console.log(`🚀 BookHeaven running at ${APP_CONFIG.PUBLIC_BASE_URL}`);
     });
 };
 
