@@ -87,6 +87,15 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// Test email configuration on startup
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('❌ Email transporter error:', error.message);
+    } else {
+        console.log('✅ Email service is ready for use');
+    }
+});
+
 let otpStore = {};
 let activeTransactions = {};
 
@@ -133,7 +142,7 @@ app.post('/api/send-otp', async (req, res) => {
 
     try {
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            return res.json({ success: false, message: 'Email service is not configured. Add EMAIL_USER and EMAIL_PASS.' });
+            return res.status(400).json({ success: false, message: 'Email service is not configured. Add EMAIL_USER and EMAIL_PASS.' });
         }
 
         const rows = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -141,19 +150,25 @@ app.post('/api/send-otp', async (req, res) => {
 
         const otp = String(Math.floor(100000 + Math.random() * 900000));
         otpStore[email] = otp;
+        console.log(`📧 OTP generated for ${email}: ${otp}`);
 
-        await transporter.sendMail({
-            from: '"BookHeaven Support" <' + process.env.EMAIL_USER + '>',
+        const mailOptions = {
+            from: `"BookHeaven Support" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Verify your BookHeaven Account',
             html: `<div style="font-family:sans-serif;padding:20px;background:#0f0e17;color:white;">
                     <h2 style="color:#7f5af0">Welcome to BookHeaven!</h2>
                     <p>Your OTP is: <b style="font-size:28px;color:#ff8906">${otp}</b></p>
+                    <p style="color:#999;font-size:12px">This OTP is valid for one-time verification only.</p>
                    </div>`
-        });
-        res.json({ success: true, message: 'OTP sent!' });
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ OTP email sent to ${email}`);
+        res.json({ success: true, message: 'OTP sent successfully!' });
     } catch (err) {
-        res.json({ success: false, message: 'Mail failed: ' + err.message });
+        console.error(`❌ OTP send error for ${email}:`, err.message);
+        res.status(500).json({ success: false, message: 'Failed to send OTP: ' + err.message });
     }
 });
 
