@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -10,8 +9,37 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+// =========================================================
+// EDIT THIS CONFIG ONLY - no .env file required
+// =========================================================
+const APP_CONFIG = {
+    // Render's default web-service port is 10000. For local 5000, change this to 5000.
+    PORT: 5000,
+    HOST: '0.0.0.0',
+
+    // Paste your full Neon PostgreSQL connection string here.
+    DATABASE_URL: 'postgresql://neondb_owner:npg_v7AsBi1gJyMS@ep-jolly-cloud-ap23jjt4-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
+
+    // Optional. Leave blank and the app will auto-detect from the current request.
+    // Example: 'https://your-app-name.onrender.com'
+    PUBLIC_BASE_URL: 'https://elib-fsd-project-sem3.onrender.com',
+
+    // Gmail OTP settings. EMAIL_PASS must be a Gmail App Password, not your normal password.
+    EMAIL_USER: 'dixitp1311@gmail.com',
+    EMAIL_PASS: 'whjwkdhqofnqpewu',
+    EMAIL_FROM: 'bookheaven2026@gmail.com',
+    SMTP_HOST: 'smtp.gmail.com',
+    SMTP_PORT: 465,
+    SMTP_SECURE: true,
+
+    // Set true only while testing locally if you want OTPs printed in terminal.
+    LOG_OTP_TO_CONSOLE: false
+};
+// =========================================================
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = APP_CONFIG.PORT;
+const HOST = APP_CONFIG.HOST || '0.0.0.0';
 
 // --- MIDDLEWARE ---
 app.use(cors());
@@ -24,7 +52,7 @@ app.use('/uploads', express.static('uploads'));
 
 // --- DATABASE CONNECTION (Neon PostgreSQL) ---
 const db = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: APP_CONFIG.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
@@ -76,16 +104,21 @@ const buildSafeUser = async (user) => {
     return safeUser;
 };
 
+const getBaseUrl = (req) => {
+    const configuredUrl = cleanConfig('PUBLIC_BASE_URL').replace(/\/$/, '');
+    if (configuredUrl) return configuredUrl;
+    return `${req.protocol}://${req.get('host')}`;
+};
+
 // --- EMAIL CONFIGURATION ---
-const cleanEnv = (key) => (process.env[key] || '').trim();
+const cleanConfig = (key) => String(APP_CONFIG[key] || '').trim();
 
 const getEmailConfig = () => {
-    const host = cleanEnv('SMTP_HOST') || 'smtp.gmail.com';
-    const port = Number(cleanEnv('SMTP_PORT') || 465);
-    const secureEnv = cleanEnv('SMTP_SECURE');
-    const secure = secureEnv ? secureEnv.toLowerCase() === 'true' : port === 465;
-    const user = cleanEnv('EMAIL_USER');
-    let pass = cleanEnv('EMAIL_PASS');
+    const host = cleanConfig('SMTP_HOST') || 'smtp.gmail.com';
+    const port = Number(APP_CONFIG.SMTP_PORT || 465);
+    const secure = Boolean(APP_CONFIG.SMTP_SECURE);
+    const user = cleanConfig('EMAIL_USER');
+    let pass = cleanConfig('EMAIL_PASS');
 
     // Gmail app passwords are often copied as "abcd efgh ijkl mnop".
     // SMTP auth expects the continuous 16-character value.
@@ -100,7 +133,7 @@ const getEmailConfig = () => {
         secure,
         user,
         pass,
-        from: cleanEnv('EMAIL_FROM') || user
+        from: cleanConfig('EMAIL_FROM') || user
     };
 };
 
@@ -124,7 +157,7 @@ const verifyEmailTransport = async () => {
     const transporter = createEmailTransporter();
 
     if (!transporter) {
-        console.warn('Email service is not configured. Add EMAIL_USER and EMAIL_PASS in Render.');
+        console.warn('Email service is not configured. Edit APP_CONFIG.EMAIL_USER and APP_CONFIG.EMAIL_PASS in server.js.');
         return;
     }
 
@@ -181,13 +214,13 @@ app.get('/api/email-status', async (req, res) => {
     const emailConfig = getEmailConfig();
     const transporter = createEmailTransporter();
 
-    if (!transporter) {
-        return res.json({
-            success: false,
-            configured: false,
-            message: 'EMAIL_USER and EMAIL_PASS are missing on this server.'
-        });
-    }
+        if (!transporter) {
+            return res.json({
+                success: false,
+                configured: false,
+                message: 'Email is not configured. Edit APP_CONFIG.EMAIL_USER and APP_CONFIG.EMAIL_PASS in server.js.'
+            });
+        }
 
     try {
         await transporter.verify();
@@ -223,7 +256,7 @@ app.post('/api/send-otp', async (req, res) => {
         if (!transporter) {
             return res.status(400).json({
                 success: false,
-                message: 'Email service is not configured on the server. Add EMAIL_USER and EMAIL_PASS in Render environment variables.'
+                message: 'Email service is not configured. Edit APP_CONFIG.EMAIL_USER and APP_CONFIG.EMAIL_PASS in server.js.'
             });
         }
 
@@ -232,10 +265,10 @@ app.post('/api/send-otp', async (req, res) => {
 
         const otp = String(Math.floor(100000 + Math.random() * 900000));
         otpStore[email] = otp;
-        if (process.env.NODE_ENV === 'production') {
-            console.log(`OTP generated for ${email}`);
-        } else {
+        if (APP_CONFIG.LOG_OTP_TO_CONSOLE) {
             console.log(`OTP generated for ${email}: ${otp}`);
+        } else {
+            console.log(`OTP generated for ${email}`);
         }
 
         const mailOptions = {
