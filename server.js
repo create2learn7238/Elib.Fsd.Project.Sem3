@@ -60,21 +60,10 @@ const ensureSchema = async () => {
     `);
 };
 
-const getStoredOtp = (email) => otpStore[email];
-
 const isOtpValid = (email, otp) => {
-    const stored = getStoredOtp(email);
+    const stored = otpStore[email];
     if (!stored) return false;
-
-    const code = typeof stored === 'object' ? stored.code : stored;
-    const expiresAt = typeof stored === 'object' ? stored.expiresAt : null;
-
-    if (expiresAt && Date.now() > expiresAt) {
-        delete otpStore[email];
-        return false;
-    }
-
-    return String(code) === String(otp || '').trim();
+    return String(stored) === String(otp || '').trim();
 };
 
 const buildSafeUser = async (user) => {
@@ -151,11 +140,7 @@ app.post('/api/send-otp', async (req, res) => {
         if (rows.length > 0) return res.json({ success: false, message: 'Email already exists' });
 
         const otp = String(Math.floor(100000 + Math.random() * 900000));
-        otpStore[email] = {
-            code: otp,
-            verified: false,
-            expiresAt: Date.now() + (10 * 60 * 1000)
-        };
+        otpStore[email] = otp;
 
         await transporter.sendMail({
             from: '"BookHeaven Support" <' + process.env.EMAIL_USER + '>',
@@ -164,7 +149,6 @@ app.post('/api/send-otp', async (req, res) => {
             html: `<div style="font-family:sans-serif;padding:20px;background:#0f0e17;color:white;">
                     <h2 style="color:#7f5af0">Welcome to BookHeaven!</h2>
                     <p>Your OTP is: <b style="font-size:28px;color:#ff8906">${otp}</b></p>
-                    <p style="opacity:0.5">Valid for this session only.</p>
                    </div>`
         });
         res.json({ success: true, message: 'OTP sent!' });
@@ -176,13 +160,8 @@ app.post('/api/send-otp', async (req, res) => {
 app.post('/api/verify-otp', (req, res) => {
     const { email, otp } = req.body;
     if (!isOtpValid(email, otp)) {
-        return res.json({ success: false, message: 'Invalid or expired OTP' });
+        return res.json({ success: false, message: 'Invalid OTP' });
     }
-
-    if (typeof otpStore[email] === 'object') {
-        otpStore[email].verified = true;
-    }
-
     res.json({ success: true, message: 'OTP verified' });
 });
 
