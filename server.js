@@ -18,11 +18,11 @@ const APP_CONFIG = {
     DATABASE_URL: 'postgresql://neondb_owner:npg_v7AsBi1gJyMS@ep-jolly-cloud-ap23jjt4-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
     PUBLIC_BASE_URL: 'https://elib-fsd-project-sem3.onrender.com',
     EMAIL_USER: 'dixitp1311@gmail.com',
-    EMAIL_PASS: 'whjwkdhqofnqpewu',
+    EMAIL_PASS: 'ugzf nnmg wwfp jrrx',
     EMAIL_FROM: 'bookheaven2026@gmail.com',
     SMTP_HOST: 'smtp.gmail.com',
-    SMTP_PORT: 465,
-    SMTP_SECURE: true,
+    SMTP_PORT: 586,
+    SMTP_SECURE: false,
     LOG_OTP_TO_CONSOLE: false
 };
 
