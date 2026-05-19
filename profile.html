@@ -75,6 +75,7 @@
                                 <strong id="profileGoal">Not set</strong>
                             </div>
                         </div>
+                        <button class="btn-primary-custom w-100 mt-4" onclick="openEditProfile()">Edit Reader Details</button>
                     </div>
                 </div>
             </div>
@@ -129,6 +130,70 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="editProfileModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content content-card">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <div>
+                        <h4 class="fw-bold mb-1">Edit Profile</h4>
+                        <p class="small opacity-50 mb-0">Keep your reader profile fresh.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div id="profileEditStatus" class="alert bg-red-500/10 text-red-400 border-0 mb-3 small hidden"></div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="section-label">Display Name</label>
+                        <input type="text" id="editName" class="styled-input">
+                    </div>
+                    <div class="col-12">
+                        <label class="section-label">Age</label>
+                        <input type="number" id="editAge" class="styled-input" min="5" max="120">
+                    </div>
+                    <div class="col-12">
+                        <label class="section-label">Favorite Author</label>
+                        <input type="text" id="editFavAuthor" class="styled-input" placeholder="Optional">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="section-label">Favorite Genre</label>
+                        <select id="editFavGenre" class="styled-input">
+                            <option value="">Not set</option>
+                            <option>Fiction</option>
+                            <option>Fantasy</option>
+                            <option>Mystery</option>
+                            <option>Self-Help</option>
+                            <option>History</option>
+                            <option>Philosophy</option>
+                            <option>Science</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="section-label">Reader Type</label>
+                        <select id="editReadingLevel" class="styled-input">
+                            <option value="">Not set</option>
+                            <option>Casual Reader</option>
+                            <option>Regular Reader</option>
+                            <option>Power Reader</option>
+                            <option>Student Researcher</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="section-label">Reading Goal</label>
+                        <select id="editReadingGoal" class="styled-input">
+                            <option value="">Not set</option>
+                            <option>Read 1 book per month</option>
+                            <option>Build a daily habit</option>
+                            <option>Study for college</option>
+                            <option>Explore new authors</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn-primary-custom w-100 py-3 mt-4" id="saveProfileBtn" onclick="saveProfileDetails()">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer Section -->
     <footer class="py-12 border-t border-white/5 opacity-40 text-center">
         <p class="small tracking-widest">© 2026 BOOKHEAVEN • PROFILE SECURED</p>
@@ -178,6 +243,12 @@
 
         function displayValue(value, fallback = 'Not set') {
             return value ? value : fallback;
+        }
+
+        function setSelectValue(id, value) {
+            const select = document.getElementById(id);
+            const exists = [...select.options].some(option => option.value === value || option.text === value);
+            select.value = exists ? (value || '') : '';
         }
 
         async function initProfile() {
@@ -279,6 +350,64 @@
                         <p>No books found in your database record.</p>
                         <a href="index.html#books-section" class="text-violet-400 text-sm">Go to Store</a>
                     </div>`;
+            }
+        }
+
+        function openEditProfile() {
+            document.getElementById('profileEditStatus').classList.add('hidden');
+            document.getElementById('editName').value = currentUser.username || '';
+            document.getElementById('editAge').value = currentUser.age || '';
+            document.getElementById('editFavAuthor').value = currentUser.favorite_author || '';
+            setSelectValue('editFavGenre', currentUser.favorite_genre || '');
+            setSelectValue('editReadingGoal', currentUser.reading_goal || '');
+            setSelectValue('editReadingLevel', currentUser.reading_level || '');
+            new bootstrap.Modal(document.getElementById('editProfileModal')).show();
+        }
+
+        async function saveProfileDetails() {
+            const btn = document.getElementById('saveProfileBtn');
+            const status = document.getElementById('profileEditStatus');
+            const payload = {
+                email: currentUser.email,
+                username: document.getElementById('editName').value.trim(),
+                age: document.getElementById('editAge').value,
+                favorite_author: document.getElementById('editFavAuthor').value.trim(),
+                favorite_genre: document.getElementById('editFavGenre').value,
+                reading_goal: document.getElementById('editReadingGoal').value,
+                reading_level: document.getElementById('editReadingLevel').value
+            };
+
+            status.classList.add('hidden');
+
+            if (!payload.username || payload.username.length < 2) {
+                status.innerText = 'Name must be at least 2 characters.';
+                status.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+
+            try {
+                const response = await fetch(`${API_BASE}/user-details`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                if (!data.success) throw new Error(data.message || 'Unable to update profile');
+
+                currentUser = data.user;
+                localStorage.setItem('user', JSON.stringify(currentUser));
+                renderUI();
+                bootstrap.Modal.getInstance(document.getElementById('editProfileModal')).hide();
+            } catch (err) {
+                status.innerText = err.message || 'Update failed.';
+                status.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Save Profile';
             }
         }
 

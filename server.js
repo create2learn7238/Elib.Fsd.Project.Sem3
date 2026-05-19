@@ -317,6 +317,58 @@ app.get('/api/user-details', async (req, res) => {
     }
 });
 
+app.put('/api/user-details', async (req, res) => {
+    const {
+        email,
+        username,
+        age,
+        favorite_author,
+        favorite_genre,
+        reading_goal,
+        reading_level
+    } = req.body;
+
+    const parsedAge = Number.parseInt(age, 10);
+    if (!email) return res.json({ success: false, message: 'Email is required' });
+    if (!username || username.trim().length < 2) {
+        return res.json({ success: false, message: 'Name must be at least 2 characters' });
+    }
+    if (!parsedAge || parsedAge < 5 || parsedAge > 120) {
+        return res.json({ success: false, message: 'Please enter a valid age' });
+    }
+
+    try {
+        const rows = await query(
+            `UPDATE users
+             SET username=$1,
+                 age=$2,
+                 favorite_author=$3,
+                 favorite_genre=$4,
+                 reading_goal=$5,
+                 reading_level=$6
+             WHERE email=$7
+             RETURNING *`,
+            [
+                username.trim(),
+                parsedAge,
+                favorite_author || null,
+                favorite_genre || null,
+                reading_goal || null,
+                reading_level || null,
+                email
+            ]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({ success: true, user: await buildSafeUser(rows[0]) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // 6. UPDATE MEMBERSHIP & SAVE PAYMENT
 app.post('/api/update-membership-status', async (req, res) => {
     const { email, plan, end_date, price, item_name, purchasedBooks, payment_method } = req.body;

@@ -42,8 +42,17 @@
                     <h2 class="fw-bold tracking-tight m-0">Member <span class="text-violet-400">Database</span></h2>
                     <p class="opacity-50 small mt-1">Manage all registered cosmic pilots and access tiers</p>
                 </div>
-                <div class="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-sm">
-                    <span class="opacity-50">Total Users:</span> <span id="userCount" class="fw-bold text-violet-400">--</span>
+                <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center">
+                    <input type="text" id="userSearch" class="styled-input admin-table-search" placeholder="Search users..." oninput="renderUsersTable()">
+                    <select id="userPlanFilter" class="styled-input admin-tier-filter" onchange="renderUsersTable()">
+                        <option value="all">All plans</option>
+                        <option value="free">Free</option>
+                        <option value="premium">Premium</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <div class="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-sm">
+                        <span class="opacity-50">Total Users:</span> <span id="userCount" class="fw-bold text-violet-400">--</span>
+                    </div>
                 </div>
             </div>
 
@@ -101,6 +110,7 @@
         if (!adminUser || adminUser.role !== 'admin') {
             window.location.href = 'index.html';
         }
+        let allUsersData = [];
 
         function formatDate(value) {
             if (!value) return '-';
@@ -113,11 +123,40 @@
             try {
                 const res = await fetch(`${API_BASE}/admin/users`);
                 const users = await res.json();
-                const now = new Date();
-                
-                document.getElementById('userCount').innerText = users.length;
+                allUsersData = users;
+                renderUsersTable();
+            } catch (e) { 
+                console.error(e);
+                alert("Critical: Signal lost with central database"); 
+            }
+        }
 
-                document.getElementById('userTableBody').innerHTML = users.map(u => {
+        function renderUsersTable() {
+            const now = new Date();
+            const query = (document.getElementById('userSearch')?.value || '').toLowerCase().trim();
+            const plan = document.getElementById('userPlanFilter')?.value || 'all';
+            const users = allUsersData.filter(user => {
+                const matchesQuery = !query ||
+                    String(user.username || '').toLowerCase().includes(query) ||
+                    String(user.email || '').toLowerCase().includes(query) ||
+                    String(user.favorite_author || '').toLowerCase().includes(query) ||
+                    String(user.favorite_genre || '').toLowerCase().includes(query);
+                const isPremium = String(user.membership_plan || 'free').toLowerCase() !== 'free';
+                const matchesPlan = plan === 'all' ||
+                    (plan === 'free' && !isPremium) ||
+                    (plan === 'premium' && isPremium) ||
+                    (plan === 'admin' && user.role === 'admin');
+                return matchesQuery && matchesPlan;
+            });
+
+            document.getElementById('userCount').innerText = users.length;
+
+            if (users.length === 0) {
+                document.getElementById('userTableBody').innerHTML = '<tr><td colspan="10" class="text-center py-5 opacity-40">No matching users.</td></tr>';
+                return;
+            }
+
+            document.getElementById('userTableBody').innerHTML = users.map(u => {
                     // Determine membership status based on end_date
                     let statusHtml = '<span class="text-muted">N/A</span>';
                     let statusClass = '';
@@ -167,10 +206,6 @@
                         </tr>
                     `;
                 }).join('');
-            } catch (e) { 
-                console.error(e);
-                alert("Critical: Signal lost with central database"); 
-            }
         }
 
         // --- USER DELETION LOGIC ---

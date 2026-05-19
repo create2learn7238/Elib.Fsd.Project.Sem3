@@ -55,10 +55,18 @@
                     <h2 class="fw-bold tracking-tight m-0 text-3xl">Revenue <span class="text-green-400">Stream</span></h2>
                     <p class="opacity-50 small mt-1">Real-time credit transaction ledger</p>
                 </div>
-                <div class="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-sm">
-                    <span class="opacity-50">Revenue:</span> <span id="revenueCount" class="fw-bold text-green-400 text-lg">₹0</span>
-                    <span class="opacity-30 mx-2">|</span>
-                    <span class="opacity-50">Transactions:</span> <span id="paymentCount" class="fw-bold text-violet-400">0</span>
+                <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center">
+                    <input type="text" id="paymentSearch" class="styled-input admin-table-search" placeholder="Search payments..." oninput="renderPaymentsTable()">
+                    <select id="paymentMethodFilter" class="styled-input admin-tier-filter" onchange="renderPaymentsTable()">
+                        <option value="all">All methods</option>
+                        <option value="card">Card</option>
+                        <option value="qr">QR</option>
+                    </select>
+                    <div class="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-sm">
+                        <span class="opacity-50">Revenue:</span> <span id="revenueCount" class="fw-bold text-green-400 text-lg">₹0</span>
+                        <span class="opacity-30 mx-2">|</span>
+                        <span class="opacity-50">Transactions:</span> <span id="paymentCount" class="fw-bold text-violet-400">0</span>
+                    </div>
                 </div>
             </div>
 
@@ -113,22 +121,45 @@
         if (!adminUser || adminUser.role !== 'admin') {
             window.location.href = 'index.html';
         }
+        let allPaymentsData = [];
 
         async function loadPayments() {
             const tableBody = document.getElementById('paymentTableBody');
             try {
                 const res = await fetch(`${API_BASE}/admin/payments`);
                 const payments = await res.json();
-                
-                if (!payments || payments.length === 0) {
+                allPaymentsData = Array.isArray(payments) ? payments : [];
+                renderPaymentsTable();
+            } catch (e) { 
+                console.error("Payment Log Error:", e);
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-20 text-red-400">Failed to connect to server.</td></tr>`;
+            }
+        }
+
+        function renderPaymentsTable() {
+            const tableBody = document.getElementById('paymentTableBody');
+            const query = (document.getElementById('paymentSearch')?.value || '').toLowerCase().trim();
+            const methodFilter = document.getElementById('paymentMethodFilter')?.value || 'all';
+            const payments = allPaymentsData.filter(payment => {
+                const method = String(payment.payment_method || 'Card').toLowerCase();
+                const matchesMethod = methodFilter === 'all' || method === methodFilter;
+                const matchesQuery = !query ||
+                    String(payment.user_email || '').toLowerCase().includes(query) ||
+                    String(payment.item_name || '').toLowerCase().includes(query) ||
+                    String(payment.status || '').toLowerCase().includes(query);
+                return matchesMethod && matchesQuery;
+            });
+
+            if (!payments || payments.length === 0) {
                     tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-20 opacity-30">No transactions recorded yet.</td></tr>`;
                     document.getElementById('paymentCount').innerText = '0';
+                    document.getElementById('revenueCount').innerText = '₹0';
                     return;
-                }
+            }
 
-                let totalRev = 0;
+            let totalRev = 0;
                 
-                tableBody.innerHTML = payments.map(p => {
+            tableBody.innerHTML = payments.map(p => {
                     // Ensure amount is treated as a number for math
                     const amt = Number(p.amount) || 0;
                     totalRev += amt;
@@ -160,15 +191,10 @@
                             </td>
                         </tr>
                     `;
-                }).join('');
+            }).join('');
                 
-                document.getElementById('revenueCount').innerText = `₹${totalRev.toLocaleString()}`;
-                document.getElementById('paymentCount').innerText = payments.length;
-
-            } catch (e) { 
-                console.error("Payment Log Error:", e);
-                tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-20 text-red-400">Failed to connect to server.</td></tr>`;
-            }
+            document.getElementById('revenueCount').innerText = `₹${totalRev.toLocaleString()}`;
+            document.getElementById('paymentCount').innerText = payments.length;
         }
 
         window.onload = () => {

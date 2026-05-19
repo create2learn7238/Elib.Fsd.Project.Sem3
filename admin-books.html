@@ -45,15 +45,19 @@
             <form id="bookForm">
                 <input type="hidden" id="bookId">
                 <div class="row g-4">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Book Title</label>
                         <input type="text" id="title" class="styled-input" placeholder="e.g. Cosmic Horizons" required>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Author Name</label>
                         <input type="text" id="author" class="styled-input" placeholder="e.g. Dr. Orion" required>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Category</label>
+                        <input type="text" id="category" class="styled-input" placeholder="e.g. Fiction">
+                    </div>
+                    <div class="col-md-3">
                         <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Price (INR)</label>
                         <input type="number" id="price" class="styled-input" value="0">
                     </div>
@@ -85,9 +89,20 @@
 
         <!-- Book Inventory Table -->
         <div class="content-card p-5 shadow-2xl">
-            <h4 class="fw-bold mb-5 tracking-tight flex items-center gap-2">
-                <span class="text-violet-500">📖</span> Planetary Collection
-            </h4>
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-5">
+                <h4 class="fw-bold mb-0 tracking-tight flex items-center gap-2">
+                    <span class="text-violet-500">📖</span> Planetary Collection
+                </h4>
+                <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center">
+                    <input type="text" id="adminBookSearch" class="styled-input admin-table-search" placeholder="Search books..." oninput="renderBooksTable()">
+                    <select id="adminBookTier" class="styled-input admin-tier-filter" onchange="renderBooksTable()">
+                        <option value="all">All tiers</option>
+                        <option value="free">Free</option>
+                        <option value="premium">Premium</option>
+                    </select>
+                    <span class="badge-plan" id="bookCount">0 titles</span>
+                </div>
+            </div>
             
             <div class="table-responsive">
                 <table class="table table-custom">
@@ -114,6 +129,16 @@
             window.location.href = 'index.html';
         }
         let allBooksData = [];
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
 
         // --- THEME MANAGEMENT ---
         // --- THEME SYNC ---
@@ -145,16 +170,41 @@
                 const res = await fetch(`${API_BASE}/books`);
                 const books = await res.json();
                 allBooksData = books;
-                document.getElementById('bookTableBody').innerHTML = books.map(b => `
+                renderBooksTable();
+            } catch (err) { console.error("Archive sync failed", err); }
+        }
+
+        function renderBooksTable() {
+            const query = (document.getElementById('adminBookSearch')?.value || '').toLowerCase().trim();
+            const tier = document.getElementById('adminBookTier')?.value || 'all';
+            const rows = allBooksData.filter(book => {
+                const matchesQuery = !query ||
+                    String(book.title || '').toLowerCase().includes(query) ||
+                    String(book.author || '').toLowerCase().includes(query) ||
+                    String(book.category || '').toLowerCase().includes(query);
+                const matchesTier = tier === 'all' ||
+                    (tier === 'free' && Number(book.is_free) === 1) ||
+                    (tier === 'premium' && Number(book.is_free) !== 1);
+                return matchesQuery && matchesTier;
+            });
+
+            document.getElementById('bookCount').innerText = `${rows.length} title${rows.length === 1 ? '' : 's'}`;
+
+            if (rows.length === 0) {
+                document.getElementById('bookTableBody').innerHTML = `<tr><td colspan="5" class="text-center py-5 opacity-40">No matching books.</td></tr>`;
+                return;
+            }
+
+            document.getElementById('bookTableBody').innerHTML = rows.map(b => `
                     <tr>
                         <td style="width: 80px;">
                             <div class="book-preview-container">
-                                <img src="${b.cover_url}" class="book-preview-img shadow-lg">
+                                <img src="${escapeHtml(b.cover_url)}" class="book-preview-img shadow-lg">
                             </div>
                         </td>
                         <td>
-                            <div class="fw-bold opacity-90">${b.title}</div>
-                            <div class="small opacity-40">${b.author}</div>
+                            <div class="fw-bold opacity-90">${escapeHtml(b.title)}</div>
+                            <div class="small opacity-40">${escapeHtml(b.author)} • ${escapeHtml(b.category || 'General')}</div>
                         </td>
                         <td>
                             <span class="status-pill ${b.is_free ? 'active' : 'expired'}" style="font-size: 10px;">
@@ -172,7 +222,6 @@
                         </td>
                     </tr>
                 `).join('');
-            } catch (err) { console.error("Archive sync failed", err); }
         }
 
         // --- BOOK CREATION & EDITING ---
@@ -189,6 +238,7 @@
             const bookData = {
                 title: document.getElementById('title').value,
                 author: document.getElementById('author').value,
+                category: document.getElementById('category').value,
                 cover_url: document.getElementById('cover_url').value,
                 book_url: document.getElementById('book_url').value,
                 price: document.getElementById('price').value,
@@ -229,6 +279,7 @@
             document.getElementById('bookId').value = book.id;
             document.getElementById('title').value = book.title;
             document.getElementById('author').value = book.author;
+            document.getElementById('category').value = book.category || "";
             document.getElementById('cover_url').value = book.cover_url;
             document.getElementById('book_url').value = book.book_url;
             document.getElementById('price').value = book.price;

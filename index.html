@@ -113,11 +113,23 @@
     <!-- Search Bar Section -->
     <section class="container search-section">
         <div class="row justify-content-center">
-            <div class="col-md-8 px-4">
+            <div class="col-md-10 px-4">
                 <div class="search-bar-wrapper">
                     <span class="ms-4 opacity-40">🔎</span>
-                    <input type="text" id="searchInput" class="search-input-field" placeholder="Search for books..." onkeypress="handleSearchKey(event)">
+                    <input type="text" id="searchInput" class="search-input-field" placeholder="Search by title or author..." oninput="performSearch()" onkeypress="handleSearchKey(event)">
                     <button class="search-submit-btn" onclick="performSearch()">Search</button>
+                </div>
+                <div class="library-tools mt-4">
+                    <div class="category-pills" id="categoryPills"></div>
+                    <select id="sortSelect" class="styled-input library-sort" onchange="performSearch()">
+                        <option value="featured">Featured</option>
+                        <option value="title">Title A-Z</option>
+                        <option value="free">Free first</option>
+                        <option value="premium">Premium first</option>
+                        <option value="priceLow">Price low-high</option>
+                        <option value="priceHigh">Price high-low</option>
+                    </select>
+                    <button class="btn-primary-custom library-random-btn" onclick="surpriseMe()">Surprise Me</button>
                 </div>
             </div>
         </div>
@@ -125,7 +137,13 @@
 
     <!-- Books Display Grid -->
     <section id="books-section" class="container py-24">
-        <h2 class="display-5 fw-bold hero-title mb-12">Featured <span class="text-violet-400">Collection</span></h2>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-5">
+            <div>
+                <h2 class="display-5 fw-bold hero-title mb-2">Featured <span class="text-violet-400">Collection</span></h2>
+                <p id="bookResultSummary" class="opacity-50 mb-0">Loading collection...</p>
+            </div>
+            <button class="btn btn-outline-light rounded-pill px-4" onclick="clearLibraryFilters()">Clear Filters</button>
+        </div>
         <div id="loadingSpinner" class="text-center py-12 hidden">
             <div class="spinner-border text-violet-400" role="status"></div>
             <p class="mt-3 opacity-50">Summoning books from the archive...</p>
@@ -431,6 +449,7 @@
         let currentPage = 1;
         const booksPerPage = 8;
         let allBooks = [], filteredBooks = [];
+        let currentCategory = 'all';
         let currentUser = JSON.parse(localStorage.getItem('user')) || null;
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
         let tempTx = { price: 0, plan: '', method: 'Card' };
@@ -481,7 +500,8 @@
                 const res = await fetch(`${API_BASE}/books`);
                 allBooks = await res.json();
                 filteredBooks = [...allBooks];
-                render();
+                buildCategoryFilters();
+                performSearch();
             } catch (err) { console.error("Books fetch error", err); }
             finally {
                 document.getElementById('loadingSpinner').classList.add('hidden');
@@ -1239,18 +1259,104 @@
         }
 
         // --- SEARCH & BOOK RENDERING ---
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function getBookPrice(book) {
+            return Number(book.price) ? Math.round(Number(book.price)) : 199;
+        }
+
+        function buildCategoryFilters() {
+            const categories = [...new Set(allBooks.map(book => book.category).filter(Boolean))].sort();
+            const container = document.getElementById('categoryPills');
+            container.innerHTML = [
+                `<button class="category-pill active" data-category="all" onclick="setCategoryFilterFromButton(this)">All</button>`,
+                ...categories.map(category => `<button class="category-pill" data-category="${escapeHtml(category)}" onclick="setCategoryFilterFromButton(this)">${escapeHtml(category)}</button>`)
+            ].join('');
+        }
+
+        function setCategoryFilterFromButton(button) {
+            setCategoryFilter(button.dataset.category || 'all', button);
+        }
+
+        function setCategoryFilter(category, button) {
+            currentCategory = category;
+            document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
+            if (button) button.classList.add('active');
+            currentPage = 1;
+            performSearch();
+        }
+
+        function sortBooks(books) {
+            const sort = document.getElementById('sortSelect').value;
+            const sorted = [...books];
+
+            if (sort === 'title') {
+                sorted.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+            } else if (sort === 'free') {
+                sorted.sort((a, b) => Number(Boolean(b.is_free)) - Number(Boolean(a.is_free)));
+            } else if (sort === 'premium') {
+                sorted.sort((a, b) => Number(Boolean(a.is_free)) - Number(Boolean(b.is_free)));
+            } else if (sort === 'priceLow') {
+                sorted.sort((a, b) => getBookPrice(a) - getBookPrice(b));
+            } else if (sort === 'priceHigh') {
+                sorted.sort((a, b) => getBookPrice(b) - getBookPrice(a));
+            }
+
+            return sorted;
+        }
+
         function performSearch() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            filteredBooks = allBooks.filter(b => 
-                b.title.toLowerCase().includes(query) || 
-                b.author.toLowerCase().includes(query)
-            );
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            filteredBooks = allBooks.filter(b => {
+                const matchesQuery = !query ||
+                    String(b.title || '').toLowerCase().includes(query) ||
+                    String(b.author || '').toLowerCase().includes(query) ||
+                    String(b.category || '').toLowerCase().includes(query);
+                const matchesCategory = currentCategory === 'all' || b.category === currentCategory;
+                return matchesQuery && matchesCategory;
+            });
+            filteredBooks = sortBooks(filteredBooks);
             currentPage = 1;
             render();
         }
 
         function handleSearchKey(e) {
             if(e.key === 'Enter') performSearch();
+        }
+
+        function clearLibraryFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('sortSelect').value = 'featured';
+            currentCategory = 'all';
+            document.querySelectorAll('.category-pill').forEach((pill, index) => pill.classList.toggle('active', index === 0));
+            performSearch();
+        }
+
+        function surpriseMe() {
+            const source = filteredBooks.length ? filteredBooks : allBooks;
+            if (!source.length) return;
+            const book = source[Math.floor(Math.random() * source.length)];
+            showBookDetails(book.id);
+        }
+
+        function addBookToCart(id) {
+            const book = allBooks.find(item => item.id === id);
+            if (!book) return;
+            addToCart(book.title, getBookPrice(book));
+        }
+
+        function downloadBook(id) {
+            const book = allBooks.find(item => item.id === id);
+            if (!book || !book.book_url) return showToast("Book link not available");
+            downloadFile(book.book_url, book.title);
         }
 
 
@@ -1260,10 +1366,24 @@
             const startIndex = (currentPage - 1) * booksPerPage;
             const endIndex = startIndex + booksPerPage;
             const paginatedBooks = filteredBooks.slice(startIndex, endIndex);
+            const summary = document.getElementById('bookResultSummary');
 
             document.getElementById('pageNumber').innerText = currentPage;
             document.getElementById('prevBtn').disabled = currentPage === 1;
             document.getElementById('nextBtn').disabled = endIndex >= filteredBooks.length;
+            summary.innerText = `${filteredBooks.length} title${filteredBooks.length === 1 ? '' : 's'} found${currentCategory !== 'all' ? ` in ${currentCategory}` : ''}`;
+
+            if (filteredBooks.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-12">
+                        <div class="empty-state-card text-center">
+                            <h4 class="fw-bold mb-2">No books found</h4>
+                            <p class="opacity-50 mb-4">Try another search, category, or sort option.</p>
+                            <button class="btn-primary-custom" onclick="clearLibraryFilters()">Reset Library</button>
+                        </div>
+                    </div>`;
+                return;
+            }
 
             grid.innerHTML = paginatedBooks.map(b => {
                 // Check ownership and access rights
@@ -1272,27 +1392,28 @@
                 const isPremium = currentUser && currentUser.membership_plan && 
                                 currentUser.membership_plan.toLowerCase() !== 'free';
                 const hasAccess = b.is_free || isPremium || isOwned;
-                const priceINR = b.price ? Math.round(b.price) : 199;
+                const priceINR = getBookPrice(b);
 
                 return `
                     <div class="col-md-3">
                         <div class="card book-card shadow h-100 border-0 group">
                             <div class="overflow-hidden relative">
-                                <img src="${b.cover_url}" class="book-img transition-transform duration-500 group-hover:scale-110 cursor-pointer" alt="${b.title}" onclick="showBookDetails(${b.id})">
+                                <img src="${escapeHtml(b.cover_url)}" class="book-img transition-transform duration-500 group-hover:scale-110 cursor-pointer" alt="${escapeHtml(b.title)}" onclick="showBookDetails(${b.id})">
                                 ${isOwned ? '<span class="badge bg-success position-absolute top-2 right-2 m-2 shadow-lg">OWNED</span>' : ''}
                                 ${b.is_free ? '<span class="badge bg-info position-absolute top-2 left-2 m-2 shadow-lg">FREE</span>' : ''}
                             </div>
                             <div class="card-body d-flex flex-column book-card-body">
                                 <div class="mb-2">
-                                    <h6 class="fw-bold mb-1 text-truncate cursor-pointer hover:text-violet-400 transition-colors" onclick="showBookDetails(${b.id})">${b.title}</h6>
-                                    <p class="small opacity-75 mb-0">${b.author}</p>
+                                    <h6 class="fw-bold mb-1 text-truncate cursor-pointer hover:text-violet-400 transition-colors" onclick="showBookDetails(${b.id})">${escapeHtml(b.title)}</h6>
+                                    <p class="small opacity-75 mb-1">${escapeHtml(b.author)}</p>
+                                    <span class="book-category-tag">${escapeHtml(b.category || 'General')}</span>
                                 </div>
                                 <div class="mt-auto pt-3">
                                 ${!hasAccess ? 
-                                    `<button class="btn-primary-custom btn-sm w-100 rounded-pill" onclick="addToCart('${b.title}', ${priceINR})">🛒 Add ₹${priceINR}</button>` : 
+                                    `<button class="btn-primary-custom btn-sm w-100 rounded-pill" onclick="addBookToCart(${b.id})">🛒 Add ₹${priceINR}</button>` : 
                                     `<div class="d-flex gap-2">
-                                        <a href="${b.book_url}" target="_blank" class="btn-primary-custom btn-sm flex-1 rounded-pill no-underline">Read</a>
-                                        ${b.is_free ? `<button onclick="downloadFile('${b.book_url}', '${b.title}')" class="btn btn-outline-light btn-sm px-3 rounded-pill" title="Download PDF">⬇</button>` : ''}
+                                        <a href="${escapeHtml(b.book_url)}" target="_blank" class="btn-primary-custom btn-sm flex-1 rounded-pill no-underline">Read</a>
+                                        ${b.is_free ? `<button onclick="downloadBook(${b.id})" class="btn btn-outline-light btn-sm px-3 rounded-pill" title="Download PDF">⬇</button>` : ''}
                                     </div>`
                                 }
                                 </div>
@@ -1308,7 +1429,7 @@
             if(!book) return;
 
             document.getElementById('modalBookTitle').innerText = book.title;
-            document.getElementById('modalBookAuthor').innerText = book.author;
+            document.getElementById('modalBookAuthor').innerText = `${book.author}${book.category ? ' • ' + book.category : ''}`;
             document.getElementById('modalBookCover').src = book.cover_url;
             document.getElementById('modalBookDescription').innerText = book.description || "This title is part of our curated digital archive. Access high-quality content directly in your browser or download for offline reading.";
 
@@ -1317,15 +1438,15 @@
             const isPremium = currentUser && currentUser.membership_plan && 
                             currentUser.membership_plan.toLowerCase() !== 'free';
             const hasAccess = book.is_free || isPremium || isOwned;
-            const priceINR = book.price ? Math.round(book.price) : 199;
+            const priceINR = getBookPrice(book);
 
             const actionDiv = document.getElementById('modalBookActions');
             
             if(hasAccess) {
                 actionDiv.innerHTML = `
                     <div class="d-grid gap-2">
-                        <a href="${book.book_url}" target="_blank" class="btn btn-primary-custom py-3">📖 Read Now</a>
-                        ${book.is_free ? `<button onclick="downloadFile('${book.book_url}', '${book.title}')" class="btn btn-outline-light py-2">⬇ Download PDF</button>` : ''}
+                        <a href="${escapeHtml(book.book_url)}" target="_blank" class="btn btn-primary-custom py-3">📖 Read Now</a>
+                        ${book.is_free ? `<button onclick="downloadBook(${book.id})" class="btn btn-outline-light py-2">⬇ Download PDF</button>` : ''}
                     </div>`;
             } else {
                 actionDiv.innerHTML = `
@@ -1333,7 +1454,7 @@
                         <span class="opacity-70">Price</span>
                         <span class="text-2xl fw-bold text-green-400">₹${priceINR}</span>
                     </div>
-                    <button onclick="addToCart('${book.title}', ${priceINR}); bootstrap.Modal.getInstance(document.getElementById('bookDetailsModal')).hide()" class="btn btn-primary-custom w-100 py-3">Add to Cart</button>`;
+                    <button onclick="addBookToCart(${book.id}); bootstrap.Modal.getInstance(document.getElementById('bookDetailsModal')).hide()" class="btn btn-primary-custom w-100 py-3">Add to Cart</button>`;
             }
             new bootstrap.Modal(document.getElementById('bookDetailsModal')).show();
         }
