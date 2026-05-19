@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Admin | BookHaven</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Playfair+Display:wght@900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode transition-colors duration-500 overflow-x-hidden">
+
+    <!-- Background Animation Elements -->
+    <div class="app-background"></div>
+    <div class="background-texture"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed top-6 w-full z-[1050] px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="navbar-styled flex items-center justify-between px-8 py-3 rounded-[100px] border border-white/10 shadow-2xl backdrop-blur-2xl">
+                <a class="flex items-center gap-3 no-underline" href="index.html">
+                    <div class="logo-box">⚙️</div>
+                    <span class="logo-label text-xl font-extrabold tracking-tighter">ADMIN CONSOLE</span>
+                </a>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMode()" class="action-icon-btn" id="modeToggle">
+                        <span id="themeIcon">☀️</span>
+                    </button>
+                    <a href="index.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">Return to Site</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Container -->
+    <div class="container py-32">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-4 mb-5">
+            <div>
+                <span class="section-label">Admin Dashboard</span>
+                <h1 class="hero-title mb-3">Control <span class="text-gradient-highlight">Center</span></h1>
+                <p class="opacity-60 mb-0">Live overview for books, users, payments, and homepage content.</p>
+            </div>
+            <button class="btn-primary-custom px-4 py-2" onclick="loadDashboardStats()">Refresh Stats</button>
+        </div>
+
+        <div class="content-card p-4 p-md-5 mb-4">
+            <div class="admin-overview-grid">
+                <div class="admin-kpi-card">
+                    <div class="kpi-label">Total Users</div>
+                    <div class="kpi-value" id="statUsers">--</div>
+                </div>
+                <div class="admin-kpi-card">
+                    <div class="kpi-label">Active Members</div>
+                    <div class="kpi-value text-gradient-highlight" id="statMembers">--</div>
+                </div>
+                <div class="admin-kpi-card">
+                    <div class="kpi-label">Books</div>
+                    <div class="kpi-value" id="statBooks">--</div>
+                </div>
+                <div class="admin-kpi-card">
+                    <div class="kpi-label">Revenue</div>
+                    <div class="kpi-value text-green-400" id="statRevenue">₹0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="content-card p-4 p-md-5 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <span class="section-label">Modules</span>
+                            <h3 class="fw-bold mb-0">Manage Library</h3>
+                        </div>
+                        <span class="badge-plan" id="statNewUsers">New: --</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <a href="admin-books.html" class="admin-module-card card-violet">
+                                <div class="module-icon-wrap">📚</div>
+                                <h4 class="fw-bold mb-2">Books</h4>
+                                <p class="small opacity-50 m-0">Add, edit, price, and remove titles.</p>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="admin-users.html" class="admin-module-card card-blue">
+                                <div class="module-icon-wrap">👥</div>
+                                <h4 class="fw-bold mb-2">Users</h4>
+                                <p class="small opacity-50 m-0">Review members, roles, and reader details.</p>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="admin-payments.html" class="admin-module-card card-green">
+                                <div class="module-icon-wrap">💳</div>
+                                <h4 class="fw-bold mb-2">Payments</h4>
+                                <p class="small opacity-50 m-0">Track card and QR demo transactions.</p>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="admin-carousel.html" class="admin-module-card card-pink">
+                                <div class="module-icon-wrap">🖼️</div>
+                                <h4 class="fw-bold mb-2">Hero Slides</h4>
+                                <p class="small opacity-50 m-0">Update homepage banners and visuals.</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="content-card p-4 p-md-5 h-100">
+                    <span class="section-label">Recent Payments</span>
+                    <h3 class="fw-bold mb-4">Activity</h3>
+                    <div id="recentActivity" class="admin-activity-list">
+                        <div class="activity-row opacity-50">Loading activity...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logout Action -->
+        <div class="text-center mt-5">
+            <button onclick="doLogout()" class="btn btn-link text-white opacity-30 text-xs tracking-widest no-underline uppercase hover:opacity-100 transition-opacity">
+                Terminate Admin Session
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- THEME MANAGEMENT ---
+        // --- THEME SYNC ---
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('themePreference');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeIcon').innerText = '🌙';
+            }
+        }
+
+        function toggleMode() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            body.classList.toggle('light-mode');
+            if (body.classList.contains('light-mode')) {
+                themeIcon.innerText = '🌙';
+                localStorage.setItem('themePreference', 'light');
+            } else {
+                themeIcon.innerText = '☀️';
+                localStorage.setItem('themePreference', 'dark');
+            }
+        }
+
+        // --- SECURITY & SESSION HANDLING ---
+        // --- SECURITY & SESSION ---
+        const API_BASE = window.location.origin + '/api';
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user || user.role !== 'admin') {
+            window.location.href = "index.html";
+        }
+
+        async function loadDashboardStats() {
+            const activity = document.getElementById('recentActivity');
+            activity.innerHTML = '<div class="activity-row opacity-50">Loading activity...</div>';
+            try {
+                const res = await fetch(`${API_BASE}/admin/stats`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message || 'Unable to load stats');
+
+                document.getElementById('statUsers').innerText = data.users.total_users || 0;
+                document.getElementById('statMembers').innerText = data.users.active_members || 0;
+                document.getElementById('statBooks').innerText = data.books.total_books || 0;
+                document.getElementById('statRevenue').innerText = `₹${Number(data.payments.total_revenue || 0).toLocaleString('en-IN')}`;
+                document.getElementById('statNewUsers').innerText = `New this week: ${data.users.new_users || 0}`;
+
+                if (!data.recentPayments || data.recentPayments.length === 0) {
+                    activity.innerHTML = '<div class="activity-row opacity-50">No payments yet.</div>';
+                    return;
+                }
+
+                activity.innerHTML = data.recentPayments.map(payment => `
+                    <div class="activity-row">
+                        <div>
+                            <div class="fw-bold">${payment.item_name}</div>
+                            <div class="small opacity-50">${payment.user_email}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-green-400 fw-bold">₹${Number(payment.amount || 0).toLocaleString('en-IN')}</div>
+                            <div class="small opacity-50">${payment.payment_method || 'Card'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                activity.innerHTML = `<div class="activity-row text-red-400">Failed to load dashboard stats.</div>`;
+            }
+        }
+
+        function doLogout() {
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+
+        window.onload = () => {
+            applySavedTheme();
+            loadDashboardStats();
+        };
+    </script>
+</body>
+</html>

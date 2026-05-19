@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management | Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode transition-colors duration-500 overflow-x-hidden">
+
+    <!-- Background Animation Elements -->
+    <div class="app-background"></div>
+    <div class="background-texture"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed top-6 w-full z-[1050] px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="navbar-styled flex items-center justify-between px-8 py-3 rounded-[100px] border border-white/10 shadow-2xl backdrop-blur-2xl">
+                <a class="flex items-center gap-3 no-underline" href="admin.html">
+                    <div class="logo-box">👥</div>
+                    <span class="logo-label text-xl font-extrabold tracking-tighter">USER REGISTRY</span>
+                </a>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMode()" class="action-icon-btn" id="modeToggle">
+                        <span id="themeIcon">☀️</span>
+                    </button>
+                    <a href="admin.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">← Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="container-fluid py-32 px-md-5">
+        <!-- User Management Table -->
+        <div class="content-card p-4 p-md-5 shadow-2xl">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+                <div>
+                    <h2 class="fw-bold tracking-tight m-0">Member <span class="text-violet-400">Database</span></h2>
+                    <p class="opacity-50 small mt-1">Manage all registered cosmic pilots and access tiers</p>
+                </div>
+                <div class="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-sm">
+                    <span class="opacity-50">Total Users:</span> <span id="userCount" class="fw-bold text-violet-400">--</span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Identity</th>
+                            <th>Contact</th>
+                            <th>Joined</th>
+                            <th>Reader Details</th>
+                            <th>Access Plan</th>
+                            <th>Timeline</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- THEME MANAGEMENT ---
+        // --- THEME SYNC ---
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('themePreference');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeIcon').innerText = '🌙';
+            }
+        }
+
+        function toggleMode() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            body.classList.toggle('light-mode');
+            if (body.classList.contains('light-mode')) {
+                themeIcon.innerText = '🌙';
+                localStorage.setItem('themePreference', 'light');
+            } else {
+                themeIcon.innerText = '☀️';
+                localStorage.setItem('themePreference', 'dark');
+            }
+        }
+
+        // --- DATA FETCHING & RENDERING ---
+        // --- DATA LOGIC ---
+        const API_BASE = window.location.origin + '/api';
+        const adminUser = JSON.parse(localStorage.getItem('user'));
+        if (!adminUser || adminUser.role !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '-';
+            return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API_BASE}/admin/users`);
+                const users = await res.json();
+                const now = new Date();
+                
+                document.getElementById('userCount').innerText = users.length;
+
+                document.getElementById('userTableBody').innerHTML = users.map(u => {
+                    // Determine membership status based on end_date
+                    let statusHtml = '<span class="text-muted">N/A</span>';
+                    let statusClass = '';
+                    
+                    if (u.end_date) {
+                        const expiry = new Date(u.end_date);
+                        if (expiry > now) {
+                            statusHtml = '<span class="status-pill active">● Active</span>';
+                        } else {
+                            statusHtml = '<span class="status-pill expired">● Expired</span>';
+                        }
+                    }
+
+                    return `
+                        <tr>
+                            <td class="opacity-40 small">${u.id}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="user-avatar-mini">${(u.username || 'U').charAt(0).toUpperCase()}</div>
+                                    <span class="fw-bold">${u.username}</span>
+                                </div>
+                            </td>
+                            <td class="small opacity-70">${u.email}</td>
+                            <td class="small">${formatDate(u.created_at)}</td>
+                            <td>
+                                <div class="small">
+                                    <div><span class="opacity-50">Age:</span> ${u.age || '-'}</div>
+                                    <div><span class="opacity-50">Genre:</span> ${u.favorite_genre || '-'}</div>
+                                    <div><span class="opacity-50">Author:</span> ${u.favorite_author || '-'}</div>
+                                </div>
+                            </td>
+                            <td><span class="badge-plan">${(u.membership_plan || 'free').toUpperCase()}</span></td>
+                            <td>
+                                <div class="timeline-box">
+                                    <span>${formatDate(u.start_date)}</span>
+                                    <span class="opacity-30 mx-1">→</span>
+                                    <span class="${statusHtml.includes('Expired') ? 'text-red-400' : ''}">${formatDate(u.end_date)}</span>
+                                </div>
+                            </td>
+                            <td><span class="role-tag">${u.role}</span></td>
+                            <td>${statusHtml}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id})">
+                                    Remove
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (e) { 
+                console.error(e);
+                alert("Critical: Signal lost with central database"); 
+            }
+        }
+
+        // --- USER DELETION LOGIC ---
+        async function deleteUser(id) {
+            if(!confirm("Are you sure you want to remove this user? This action cannot be undone.")) return;
+            const res = await fetch(`${API_BASE}/admin/delete-user/${id}`, { method: 'DELETE' });
+            if(res.ok) {
+                loadUsers();
+            }
+        }
+        
+        window.onload = () => {
+            applySavedTheme();
+            loadUsers();
+        };
+    </script>
+</body>
+</html>

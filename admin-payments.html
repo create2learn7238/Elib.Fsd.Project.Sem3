@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Logs | Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .hidden { display: none !important; }
+        .text-price { font-family: 'monospace'; font-weight: 800; }
+        .method-badge {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body class="dark-mode transition-colors duration-500 overflow-x-hidden">
+
+    <!-- Background Animation Elements -->
+    <div class="app-background"></div>
+    <div class="background-texture"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed top-6 w-full z-[1050] px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="navbar-styled flex items-center justify-between px-8 py-3 rounded-[100px] border border-white/10 shadow-2xl backdrop-blur-2xl">
+                <a class="flex items-center gap-3 no-underline" href="admin.html">
+                    <div class="logo-box">💰</div>
+                    <span class="logo-label text-xl font-extrabold tracking-tighter uppercase">Transaction Logs</span>
+                </a>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMode()" class="action-icon-btn" id="modeToggle">
+                        <span id="themeIcon">☀️</span>
+                    </button>
+                    <a href="admin.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">← Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="container py-32">
+        <!-- Payment Transactions Table -->
+        <div class="content-card p-4 p-md-5 shadow-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+                <div>
+                    <h2 class="fw-bold tracking-tight m-0 text-3xl">Revenue <span class="text-green-400">Stream</span></h2>
+                    <p class="opacity-50 small mt-1">Real-time credit transaction ledger</p>
+                </div>
+                <div class="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-sm">
+                    <span class="opacity-50">Revenue:</span> <span id="revenueCount" class="fw-bold text-green-400 text-lg">₹0</span>
+                    <span class="opacity-30 mx-2">|</span>
+                    <span class="opacity-50">Transactions:</span> <span id="paymentCount" class="fw-bold text-violet-400">0</span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-custom align-middle">
+                    <thead>
+                        <tr>
+                            <th class="py-3">TX ID</th>
+                            <th>User Account</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                            <th>Credits</th>
+                            <th>Status</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- THEME MANAGEMENT ---
+        // --- THEME SYNC ---
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('themePreference');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeIcon').innerText = '🌙';
+            }
+        }
+
+        function toggleMode() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            body.classList.toggle('light-mode');
+            if (body.classList.contains('light-mode')) {
+                themeIcon.innerText = '🌙';
+                localStorage.setItem('themePreference', 'light');
+            } else {
+                themeIcon.innerText = '☀️';
+                localStorage.setItem('themePreference', 'dark');
+            }
+        }
+
+        // --- DATA FETCHING & RENDERING ---
+        // --- DATA LOGIC ---
+        const API_BASE = window.location.origin + '/api';
+        const adminUser = JSON.parse(localStorage.getItem('user'));
+        if (!adminUser || adminUser.role !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        async function loadPayments() {
+            const tableBody = document.getElementById('paymentTableBody');
+            try {
+                const res = await fetch(`${API_BASE}/admin/payments`);
+                const payments = await res.json();
+                
+                if (!payments || payments.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-20 opacity-30">No transactions recorded yet.</td></tr>`;
+                    document.getElementById('paymentCount').innerText = '0';
+                    return;
+                }
+
+                let totalRev = 0;
+                
+                tableBody.innerHTML = payments.map(p => {
+                    // Ensure amount is treated as a number for math
+                    const amt = Number(p.amount) || 0;
+                    totalRev += amt;
+
+                    // Handle Payment Method icons
+                    const method = p.payment_method ? p.payment_method.toUpperCase() : 'CARD';
+                    const methodIcon = method === 'QR' ? '📱' : '💳';
+                    const status = (p.status || 'success').toLowerCase();
+
+                    return `
+                        <tr class="border-bottom border-white/5">
+                            <td><span class="px-2 py-1 bg-white/5 rounded text-xs opacity-70">#${p.id}</span></td>
+                            <td class="fw-semibold">${p.user_email}</td>
+                            <td>
+                                <span class="method-badge">
+                                    ${methodIcon} ${method}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="text-sm opacity-80">${p.item_name}</div>
+                            </td>
+                            <td><span class="text-green-400 fw-bold">₹${amt.toLocaleString()}</span></td>
+                            <td><span class="status-pill ${status === 'success' ? 'active' : 'expired'}">${status}</span></td>
+                            <td>
+                                <div class="text-xs">
+                                    <div class="opacity-80">${new Date(p.transaction_date).toLocaleDateString()}</div>
+                                    <div class="opacity-40">${new Date(p.transaction_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                document.getElementById('revenueCount').innerText = `₹${totalRev.toLocaleString()}`;
+                document.getElementById('paymentCount').innerText = payments.length;
+
+            } catch (e) { 
+                console.error("Payment Log Error:", e);
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-20 text-red-400">Failed to connect to server.</td></tr>`;
+            }
+        }
+
+        window.onload = () => {
+            applySavedTheme();
+            loadPayments();
+        };
+    </script>
+</body>
+</html>

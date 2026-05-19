@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Carousel | Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode transition-colors duration-500 overflow-x-hidden">
+
+    <!-- Background Animation Elements -->
+    <div class="app-background"></div>
+    <div class="background-texture"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed top-6 w-full z-[1050] px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="navbar-styled flex items-center justify-between px-8 py-3 rounded-[100px] border border-white/10 shadow-2xl backdrop-blur-2xl">
+                <a class="flex items-center gap-3 no-underline" href="admin.html">
+                    <div class="logo-box">🖼️</div>
+                    <span class="logo-label text-xl font-extrabold tracking-tighter uppercase">Hero Engine</span>
+                </a>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMode()" class="action-icon-btn" id="modeToggle">
+                        <span id="themeIcon">☀️</span>
+                    </button>
+                    <a href="admin.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">← Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="container py-32">
+        <!-- Slide Creation Form -->
+        <div class="content-card p-5 shadow-2xl mb-12">
+            <div class="mb-5">
+                <h2 class="fw-bold tracking-tight m-0">Create <span class="text-pink-400">Visuals</span></h2>
+                <p class="opacity-50 small mt-1">Deploy new slides to the homepage star-chart</p>
+            </div>
+
+            <form id="carouselForm">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Slide Main Title</label>
+                        <input type="text" id="slideTitle" class="styled-input" placeholder="e.g. Infinite Knowledge" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Secondary Text</label>
+                        <input type="text" id="slideSubtitle" class="styled-input" placeholder="e.g. Explore our vast archives" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Background Asset</label>
+                        <div class="custom-file-upload">
+                            <input type="file" id="slideImageFile" class="form-control styled-input p-2" accept="image/*" required>
+                        </div>
+                    </div>
+                    <div class="col-md-12 text-end">
+                        <button type="submit" class="btn-primary-custom px-5 py-3">Deploy Slide</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Existing Slides Table -->
+        <div class="content-card p-5 shadow-2xl">
+            <h4 class="fw-bold mb-5 tracking-tight flex items-center gap-2">
+                <span class="text-pink-500">🌌</span> Active Star-Chart Slides
+            </h4>
+            
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Preview</th>
+                            <th>Information</th>
+                            <th>Subtext</th>
+                            <th>Operations</th>
+                        </tr>
+                    </thead>
+                    <tbody id="slideTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- API CONFIGURATION ---
+        const API_BASE = window.location.origin + '/api';
+        const API_URL = `${API_BASE}/admin/carousel`;
+        const adminUser = JSON.parse(localStorage.getItem('user'));
+        if (!adminUser || adminUser.role !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        // --- THEME MANAGEMENT ---
+        // --- THEME SYNC ---
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('themePreference');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeIcon').innerText = '🌙';
+            }
+        }
+
+        function toggleMode() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            body.classList.toggle('light-mode');
+            if (body.classList.contains('light-mode')) {
+                themeIcon.innerText = '🌙';
+                localStorage.setItem('themePreference', 'light');
+            } else {
+                themeIcon.innerText = '☀️';
+                localStorage.setItem('themePreference', 'dark');
+            }
+        }
+
+        // --- DATA FETCHING & RENDERING ---
+        // --- DATA LOGIC ---
+        async function loadSlides() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                const slides = Array.isArray(data) ? data : (data.data || []);
+                
+                const tableBody = document.getElementById('slideTableBody');
+                if (slides.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-5 opacity-30">No active slides detected.</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = slides.map(s => `
+                    <tr>
+                        <td style="width: 150px;">
+                            <div class="slide-preview-container">
+                                <img src="${s.image_url.startsWith('http') ? s.image_url : window.location.origin + s.image_url}" class="slide-preview-img shadow-lg">
+                            </div>
+                        </td>
+                        <td class="fw-bold opacity-90">${s.title}</td>
+                        <td class="small opacity-50">${s.subtitle}</td>
+                        <td class="text-end">
+                            <button class="btn-delete-action" onclick="deleteSlide(${s.id})">
+                                <span>Terminate</span>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Error loading slides:", err);
+            }
+        }
+
+        // --- ADD NEW SLIDE LOGIC ---
+        document.getElementById('carouselForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.innerText = "Uploading...";
+            btn.disabled = true;
+            
+            // Use FormData for file upload
+            const formData = new FormData();
+            formData.append('title', document.getElementById('slideTitle').value);
+            formData.append('subtitle', document.getElementById('slideSubtitle').value);
+            formData.append('image', document.getElementById('slideImageFile').files[0]);
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData 
+                });
+
+                if (res.ok) {
+                    alert("System: Slide successfully deployed!");
+                    document.getElementById('carouselForm').reset();
+                    loadSlides();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert("Error: Uplink failed. " + (err.message || "Check server console"));
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+            } finally {
+                btn.innerText = "Deploy Slide";
+                btn.disabled = false;
+            }
+        });
+
+        // --- DELETE SLIDE LOGIC ---
+        async function deleteSlide(id) {
+            if (!confirm("Confirm slide deletion?")) return;
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            loadSlides();
+        }
+
+        window.onload = () => {
+            applySavedTheme();
+            loadSlides();
+        };
+    </script>
+</body>
+</html>

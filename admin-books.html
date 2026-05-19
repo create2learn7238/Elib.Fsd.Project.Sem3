@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Books | Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode transition-colors duration-500 overflow-x-hidden">
+
+    <!-- Background Animation Elements -->
+    <div class="app-background"></div>
+    <div class="background-texture"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed top-6 w-full z-[1050] px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="navbar-styled flex items-center justify-between px-8 py-3 rounded-[100px] border border-white/10 shadow-2xl backdrop-blur-2xl">
+                <a class="flex items-center gap-3 no-underline" href="admin.html">
+                    <div class="logo-box">📚</div>
+                    <span class="logo-label text-xl font-extrabold tracking-tighter uppercase">Library Assets</span>
+                </a>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMode()" class="action-icon-btn" id="modeToggle">
+                        <span id="themeIcon">☀️</span>
+                    </button>
+                    <a href="admin.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">← Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="container py-32">
+        <!-- Book Management Form -->
+        <div class="content-card p-5 shadow-2xl mb-12">
+            <div class="mb-5">
+                <h2 class="fw-bold tracking-tight m-0">Publish <span class="text-violet-400">Content</span></h2>
+                <p class="opacity-50 small mt-1">Add new digital titles to the universal library archive</p>
+            </div>
+
+            <form id="bookForm">
+                <input type="hidden" id="bookId">
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Book Title</label>
+                        <input type="text" id="title" class="styled-input" placeholder="e.g. Cosmic Horizons" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Author Name</label>
+                        <input type="text" id="author" class="styled-input" placeholder="e.g. Dr. Orion" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Price (INR)</label>
+                        <input type="number" id="price" class="styled-input" value="0">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Cover Image URL</label>
+                        <input type="url" id="cover_url" class="styled-input" placeholder="https://..." required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">PDF / Access Link</label>
+                        <input type="url" id="book_url" class="styled-input" placeholder="https://..." required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Tier</label>
+                        <select id="is_free" class="styled-input">
+                            <option value="1">Free Access</option>
+                            <option value="0">Premium Only</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="small opacity-50 uppercase tracking-widest fw-bold mb-2 d-block">Description / Synopsis</label>
+                        <textarea id="description" class="styled-input" rows="3" placeholder="Enter book summary..."></textarea>
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button type="submit" id="submitBtn" class="btn-primary-custom px-5 py-3">Publish to Vault</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Book Inventory Table -->
+        <div class="content-card p-5 shadow-2xl">
+            <h4 class="fw-bold mb-5 tracking-tight flex items-center gap-2">
+                <span class="text-violet-500">📖</span> Planetary Collection
+            </h4>
+            
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Preview</th>
+                            <th>Title & Author</th>
+                            <th>Access Tier</th>
+                            <th>Cost</th>
+                            <th class="text-end">Command</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+        const adminUser = JSON.parse(localStorage.getItem('user'));
+        if (!adminUser || adminUser.role !== 'admin') {
+            window.location.href = 'index.html';
+        }
+        let allBooksData = [];
+
+        // --- THEME MANAGEMENT ---
+        // --- THEME SYNC ---
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('themePreference');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeIcon').innerText = '🌙';
+            }
+        }
+
+        function toggleMode() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            body.classList.toggle('light-mode');
+            if (body.classList.contains('light-mode')) {
+                themeIcon.innerText = '🌙';
+                localStorage.setItem('themePreference', 'light');
+            } else {
+                themeIcon.innerText = '☀️';
+                localStorage.setItem('themePreference', 'dark');
+            }
+        }
+
+        // --- DATA FETCHING & RENDERING ---
+        // --- 1. Load Books ---
+        async function loadBooks() {
+            try {
+                const res = await fetch(`${API_BASE}/books`);
+                const books = await res.json();
+                allBooksData = books;
+                document.getElementById('bookTableBody').innerHTML = books.map(b => `
+                    <tr>
+                        <td style="width: 80px;">
+                            <div class="book-preview-container">
+                                <img src="${b.cover_url}" class="book-preview-img shadow-lg">
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold opacity-90">${b.title}</div>
+                            <div class="small opacity-40">${b.author}</div>
+                        </td>
+                        <td>
+                            <span class="status-pill ${b.is_free ? 'active' : 'expired'}" style="font-size: 10px;">
+                                ${b.is_free ? '● FREE' : '● PREMIUM'}
+                            </span>
+                        </td>
+                        <td><span class="text-price text-sm">₹${b.price || 0}</span></td>
+                        <td class="text-end">
+                            <button class="btn-delete-action text-warning border-warning bg-warning/10 me-2" onclick="editBook(${b.id})">
+                                <span>Edit</span>
+                            </button>
+                            <button class="btn-delete-action" onclick="deleteBook(${b.id})">
+                                <span>Remove</span>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) { console.error("Archive sync failed", err); }
+        }
+
+        // --- BOOK CREATION & EDITING ---
+        // --- 2. Add / Edit Book ---
+        document.getElementById('bookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            // Collect form data
+            const bookId = document.getElementById('bookId').value;
+            const bookData = {
+                title: document.getElementById('title').value,
+                author: document.getElementById('author').value,
+                cover_url: document.getElementById('cover_url').value,
+                book_url: document.getElementById('book_url').value,
+                price: document.getElementById('price').value,
+                is_free: document.getElementById('is_free').value,
+                description: document.getElementById('description').value
+            };
+
+            // Determine if we are creating (POST) or updating (PUT)
+            const endpoint = bookId ? `${API_BASE}/admin/edit-book/${bookId}` : `${API_BASE}/admin/add-book`;
+            const method = bookId ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(bookData)
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert(bookId ? "System: Record updated." : "System: Content successfully published.");
+                    document.getElementById('bookForm').reset();
+                    document.getElementById('bookId').value = "";
+                    document.getElementById('submitBtn').innerText = "Publish to Vault";
+                    loadBooks();
+                }
+            } catch (err) { alert("Uplink failed."); }
+            finally {
+                if(document.getElementById('bookId').value === "") btn.innerText = "Publish to Vault";
+                else btn.innerText = "Update Record";
+                btn.disabled = false;
+            }
+        });
+
+        function editBook(id) {
+            const book = allBooksData.find(b => b.id === id);
+            if(!book) return;
+            
+            document.getElementById('bookId').value = book.id;
+            document.getElementById('title').value = book.title;
+            document.getElementById('author').value = book.author;
+            document.getElementById('cover_url').value = book.cover_url;
+            document.getElementById('book_url').value = book.book_url;
+            document.getElementById('price').value = book.price;
+            document.getElementById('is_free').value = book.is_free ? 1 : 0;
+            document.getElementById('description').value = book.description || "";
+            
+            document.getElementById('submitBtn').innerText = "Update Record";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- BOOK DELETION ---
+        // --- 3. Delete Book ---
+        async function deleteBook(id) {
+            if(!confirm("Are you sure you want to delete this record?")) return;
+            const res = await fetch(`${API_BASE}/admin/delete-book/${id}`, { method: 'DELETE' });
+            if(res.ok) {
+                loadBooks();
+            }
+        }
+
+        window.onload = () => {
+            applySavedTheme();
+            loadBooks();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookHeaven | E-Library</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Playfair+Display:wght@900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode overflow-x-hidden">
+
+    <!-- Background Animation Elements -->
+    <div class="app-background"></div>
+    <div class="background-texture"></div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3">
+    <div id="liveToast" class="toast toast-notification hide" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex justify-content-center align-items-center">
+            <div class="toast-body" id="toastMsg"></div>
+            <button type="button" class="btn-close btn-close-white me-3" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed top-6 w-full z-[1000] px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="navbar-styled flex items-center justify-between px-8 py-3 rounded-[100px] border border-white/10 shadow-2xl backdrop-blur-2xl bg-white/5">
+                
+                <a class="flex items-center gap-3 no-underline" href="#">
+                    <div class="logo-box">📖</div>
+                    <span class="logo-label text-xl font-extrabold tracking-tighter">BOOKHEAVEN</span>
+                </a>
+
+                <div class="flex items-center gap-2">
+                    <a class="nav-item-link" href="#home">Home</a>
+                    <a class="nav-item-link" href="#" onclick="openMembershipSelection(); return false;">Membership</a>
+                    <a class="nav-item-link" href="#books-section">Books</a>
+                </div>
+
+                <!-- Dark/Light Mode -->
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMode()" class="action-icon-btn" id="modeToggle">
+                        <span id="themeIcon">🌓</span>
+                    </button>
+                <!-- Cart Button -->
+                    <button onclick="openCart()" class="action-icon-btn relative">
+                        <span>🛒</span>
+                        <span class="cart-count-badge" id="cartCount">0</span>
+                    </button>
+                    
+                    <div id="auth-zone" class="flex items-center gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Hero Carousel Section -->
+    <header id="home" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4000">
+    <div class="carousel-inner" id="carouselTrack">
+        <div class="carousel-item active" id="staticHero">
+            <div class="hero-content-wrapper flex items-center">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-md-7 text-center text-md-start">
+                            <h1 class="hero-title">Your Gateway to <br><span class="text-gradient-highlight">Knowledge</span></h1>
+                            <p class="fs-5 opacity-60 mb-5 max-w-lg">Discover thousands of hand-picked titles in our cosmic digital library.</p>
+                            <a href="#books-section" class="btn-primary-custom px-5 py-3 no-underline">Start Reading</a>
+                        </div>
+                        <div class="col-md-5 d-none d-md-block text-center">
+                            <div class="icon-container-circle">
+                                <div class="hero-emoji">📚</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="carousel-item" id="membership-trigger">
+            <div class="hero-content-wrapper flex items-center">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-md-7 text-center text-md-start">
+                            <h1 class="hero-title text-pink-500">Premium <br>Membership</h1>
+                            <p class="fs-5 opacity-60 mb-5">Get unlimited access to all books and premium features instantly.</p>
+                            <button onclick="openMembershipSelection()" class="btn-primary-custom btn-pink px-5 py-3">Join Premium</button>
+                        </div>
+                        <div class="col-md-5 d-none d-md-block text-center">
+                            <div class="icon-container-circle pink-glow">
+                                <div class="hero-emoji">🔖</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CAROUSEL BUTTONS -->
+    <button class="carousel-control-prev w-[5%]" type="button" data-bs-target="#home" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next w-[5%]" type="button" data-bs-target="#home" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+    </button>
+</header>
+
+    <!-- Search Bar Section -->
+    <section class="container search-section">
+        <div class="row justify-content-center">
+            <div class="col-md-8 px-4">
+                <div class="search-bar-wrapper">
+                    <span class="ms-4 opacity-40">🔎</span>
+                    <input type="text" id="searchInput" class="search-input-field" placeholder="Search for books..." onkeypress="handleSearchKey(event)">
+                    <button class="search-submit-btn" onclick="performSearch()">Search</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Books Display Grid -->
+    <section id="books-section" class="container py-24">
+        <h2 class="display-5 fw-bold hero-title mb-12">Featured <span class="text-violet-400">Collection</span></h2>
+        <div id="loadingSpinner" class="text-center py-12 hidden">
+            <div class="spinner-border text-violet-400" role="status"></div>
+            <p class="mt-3 opacity-50">Summoning books from the archive...</p>
+        </div>
+        <div class="row g-5" id="bookGrid"></div>
+        <div class="d-flex justify-content-center align-items-center gap-4 mt-20">
+            <button class="nav-circle-btn" id="prevBtn" onclick="changePage(-1)">◀</button>
+            <div class="page-pill">Page <span id="pageNumber">1</span></div>
+            <button class="nav-circle-btn" id="nextBtn" onclick="changePage(1)">▶</button>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content content-card">
+                <h4 class="fw-bold mb-4">Login</h4>
+                <div id="logStatus" class="alert bg-red-500/10 text-red-400 border-0 mb-3 small hidden"></div>
+                <div class="mb-3">
+                    <input type="email" id="logEmail" class="styled-input" placeholder="Email">
+                    <span id="logEmailError" class="text-xs text-red-500 mt-1 hidden"></span>
+                </div>
+                <div class="mb-4">
+                    <input type="password" id="logPass" class="styled-input" placeholder="Password">
+                    <span id="logPassError" class="text-xs text-red-500 mt-1 hidden"></span>
+                </div>
+                <div class="text-end mb-4">
+                    <a href="#" class="text-sm text-violet-400 no-underline hover:text-violet-300" onclick="showChangePass(); return false;">Change Password</a>
+                </div>
+                <button class="btn-primary-custom w-100 py-3" id="loginBtnAction" onclick="validateAndLogin()">Sign In</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div class="modal fade" id="regModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content content-card border-pink-500/20">
+                <h4 class="fw-bold mb-2">Create Account</h4>
+                <p class="opacity-50 small mb-4">Verify your email, then personalize your reading profile.</p>
+                <div class="step-indicator">
+                    <span class="step-dot active" id="stepDotAccount"></span>
+                    <span class="step-dot" id="stepDotOtp"></span>
+                    <span class="step-dot" id="stepDotDetails"></span>
+                </div>
+                <div id="regStatus" class="alert bg-red-500/10 text-red-400 border-0 mb-3 small hidden"></div>
+                <div id="regInputs">
+                    <div class="mb-2">
+                        <input type="text" id="regName" class="styled-input" placeholder="Username">
+                        <span id="regNameError" class="text-xs text-red-500 mt-1 hidden"></span>
+                    </div>
+                    <div class="mb-2">
+                        <input type="email" id="regEmail" class="styled-input" placeholder="Email">
+                        <span id="regEmailError" class="text-xs text-red-500 mt-1 hidden"></span>
+                    </div>
+                    <div class="mb-2">
+                        <input type="password" id="regPass" class="styled-input" placeholder="Password">
+                        <span id="regPassError" class="text-xs text-red-500 mt-1 hidden"></span>
+                    </div>
+                    <div class="mb-4">
+                        <input type="password" id="regConfirmPass" class="styled-input" placeholder="Confirm Password">
+                        <span id="regConfirmPassError" class="text-xs text-red-500 mt-1 hidden"></span>
+                    </div>
+                    <button class="btn-primary-custom w-100 py-3" id="sendOtpBtn" onclick="validateAndSendOTP()">Send OTP</button>
+                </div>
+                <div id="otpSection" style="display: none;">
+                    <div class="alert bg-blue-500/10 text-blue-300 border-0 mb-3 small">OTP has been sent to your email!</div>
+                    <input type="text" id="otpInput" class="styled-input mb-4" placeholder="Enter 6-digit OTP">
+                    <button class="btn-primary-custom w-100 py-3" id="verifyBtn" onclick="verifyOtpAndContinue()">Verify OTP & Continue</button>
+                    <div class="flex justify-between mt-3 px-1">
+                        <button class="btn btn-link text-white/40 text-sm no-underline p-0" onclick="goBackToReg()">← Edit Email</button>
+                        <button class="btn btn-link text-violet-400 text-sm no-underline p-0" id="resendOtpBtn" onclick="resendOTP()">Resend OTP</button>
+                    </div>
+                </div>
+                <div id="detailsSection" style="display: none;">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="section-label">Required</label>
+                            <input type="number" id="regAge" class="styled-input" min="5" max="120" placeholder="Age">
+                            <span id="regAgeError" class="text-xs text-red-500 mt-1 hidden"></span>
+                        </div>
+                        <div class="col-12">
+                            <label class="section-label">Optional</label>
+                            <input type="text" id="regFavAuthor" class="styled-input" placeholder="Favorite author">
+                        </div>
+                        <div class="col-md-6">
+                            <select id="regFavGenre" class="styled-input">
+                                <option value="">Favorite genre</option>
+                                <option>Fiction</option>
+                                <option>Fantasy</option>
+                                <option>Mystery</option>
+                                <option>Self-Help</option>
+                                <option>History</option>
+                                <option>Philosophy</option>
+                                <option>Science</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <select id="regReadingLevel" class="styled-input">
+                                <option value="">Reader type</option>
+                                <option>Casual Reader</option>
+                                <option>Regular Reader</option>
+                                <option>Power Reader</option>
+                                <option>Student Researcher</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <select id="regReadingGoal" class="styled-input">
+                                <option value="">Reading goal</option>
+                                <option>Read 1 book per month</option>
+                                <option>Build a daily habit</option>
+                                <option>Study for college</option>
+                                <option>Explore new authors</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-primary-custom w-100 py-3 mt-4" id="completeRegBtn" onclick="completeRegistration()">Complete & Login</button>
+                    <button class="btn btn-link text-white/40 w-100 mt-3 no-underline text-sm" onclick="showOtpStep()">Back to OTP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="changePassModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content content-card">
+                <h4 class="fw-bold mb-4">Change Password</h4>
+                <div id="changePassStatus" class="alert bg-blue-500/10 text-blue-300 border-0 mb-3 small hidden"></div>
+                <div class="mb-3">
+                    <input type="email" id="cpEmail" class="styled-input" placeholder="Email Address">
+                </div>
+                <div class="mb-3">
+                    <input type="password" id="cpOldPass" class="styled-input" placeholder="Current Password">
+                </div>
+                <div class="mb-4">
+                    <input type="password" id="cpNewPass" class="styled-input" placeholder="New Password">
+                </div>
+                <button class="btn-primary-custom w-100 py-3" id="changePassBtn" onclick="handleChangePassword()">Update Password</button>
+                <button class="btn btn-link text-white/40 w-100 mt-3 no-underline text-sm" onclick="showLoginFromChangePass()">Back to Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shopping Cart Modal -->
+    <div class="modal fade" id="cartModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content content-card">
+                <h4 class="fw-bold mb-4">Your Cart</h4>
+                <div id="cartItemsList" class="mb-4"></div>
+                <div class="d-flex justify-content-between fw-bold mb-4 border-t border-white/10 pt-3">
+                    <span>Total:</span>
+                    <span id="cartTotal" class="text-xl">₹0</span>
+                </div>
+                <button class="btn-primary-custom w-100 py-3" onclick="proceedToPaymentFromCart()">Checkout</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Membership Plans Modal -->
+    <div class="modal fade" id="planModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content content-card border-0">
+                <div class="modal-header border-0">
+                    <h4 class="fw-bold text-violet-400 w-100 text-center text-3xl tracking-tight">Unlock the Archive</h4>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-5">
+                    <div class="row g-4">
+                        <!-- Starter Plan -->
+                        <div class="col-md-4">
+                            <div class="p-4 rounded-3xl border border-white/10 bg-white/5 h-100 d-flex flex-column hover:border-violet-500 transition-all cursor-pointer group" onclick="addToCart('Membership: Starter', 499, true, 30)">
+                                <h5 class="fw-bold opacity-70">Starter</h5>
+                                <h2 class="text-4xl fw-bold mb-4 mt-2">₹499<span class="text-sm opacity-50 font-normal">/mo</span></h2>
+                                <ul class="list-unstyled opacity-70 text-sm mb-5 space-y-3 flex-grow-1">
+                                    <li class="flex gap-2"><span>✓</span> 1 MONTH</li>
+                                    <li class="flex gap-2"><span>✓</span> Full Library Access</li>
+                                    <li class="flex gap-2"><span>✓</span> Read Online</li>
+                                    <li class="flex gap-2"><span>✓</span> 24/7 Support</li>
+                                </ul>
+                                <button class="btn btn-outline-light w-100 rounded-xl py-3 group-hover:bg-white group-hover:text-black transition-all">Choose Starter</button>
+                            </div>
+                        </div>
+                        <!-- Standard Plan -->
+                        <div class="col-md-4">
+                            <div class="p-4 rounded-3xl border-2 border-violet-500 bg-violet-500/10 h-100 d-flex flex-column relative overflow-hidden cursor-pointer transform hover:-translate-y-2 transition-all shadow-2xl shadow-violet-900/20" onclick="addToCart('Membership: Standard', 1299, true, 90)">
+                                <div class="absolute top-0 right-0 bg-violet-500 text-white text-xs fw-bold px-3 py-1 rounded-bl-xl">MOST POPULAR</div>
+                                <h5 class="fw-bold text-violet-300">Standard</h5>
+                                <h2 class="text-4xl fw-bold mb-4 mt-2">₹1,299<span class="text-sm opacity-50 font-normal">/3mo</span></h2>
+                                <ul class="list-unstyled opacity-90 text-sm mb-5 space-y-3 flex-grow-1">
+                                    <li class="flex gap-2"><span>✓</span> 3 MONTH</li>
+                                    <li class="flex gap-2"><span>✓</span> Full Library Access</li>
+                                    <li class="flex gap-2"><span>✓</span> Read Online</li>
+                                    <li class="flex gap-2"><span>✓</span> 24/7 Support</li>
+                                </ul>
+                                <button class="btn-primary-custom w-100 rounded-xl py-3 shadow-lg">Choose Standard</button>
+                            </div>
+                        </div>
+                        <!-- Pro Plan -->
+                        <div class="col-md-4">
+                            <div class="p-4 rounded-3xl border border-white/10 bg-white/5 h-100 d-flex flex-column hover:border-pink-500 transition-all cursor-pointer group" onclick="addToCart('Membership: Pro', 3999, true, 365)">
+                                <h5 class="fw-bold opacity-70">Pro</h5>
+                                <h2 class="text-4xl fw-bold mb-4 mt-2">₹3,999<span class="text-sm opacity-50 font-normal">/yr</span></h2>
+                                <ul class="list-unstyled opacity-70 text-sm mb-5 space-y-3 flex-grow-1">
+                                    <li class="flex gap-2"><span>✓</span> 1 YEAR</li>
+                                    <li class="flex gap-2"><span>✓</span> Full Library Access</li>
+                                    <li class="flex gap-2"><span>✓</span> Read Online</li>
+                                    <li class="flex gap-2"><span>✓</span> 24/7 Support</li>
+                                </ul>
+                                <button class="btn btn-outline-light w-100 rounded-xl py-3 group-hover:bg-pink-500 group-hover:border-pink-500 transition-all">Choose Pro</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Book Details Modal -->
+    <div class="modal fade" id="bookDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content content-card overflow-hidden border border-white/10">
+                <div class="row g-0">
+                    <div class="col-md-5 relative bg-black">
+                        <img id="modalBookCover" src="" class="w-full h-full object-cover opacity-80 min-h-[350px]">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                    </div>
+                    <div class="col-md-7 p-5 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h3 id="modalBookTitle" class="fw-bold text-3xl m-0 tracking-tight">Title</h3>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <p id="modalBookAuthor" class="text-violet-400 mb-4 text-lg">Author</p>
+                        
+                        <p id="modalBookDescription" class="opacity-60 text-sm mb-5 leading-relaxed">
+                            This title is part of our curated digital archive. Access high-quality content directly in your browser or download for offline reading.
+                        </p>
+
+                        <div class="mt-auto" id="modalBookActions"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Gateway Modal -->
+    <div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content content-card">
+            <h4 class="fw-bold mb-3">Secure Checkout</h4>
+            
+            <div class="flex gap-2 mb-4 p-1 bg-white/5 rounded-2xl">
+                <button id="btnPayCard" onclick="switchPayMethod('Card')" class="flex-1 py-2 rounded-xl bg-violet-600 text-white">💳 Card</button>
+                <button id="btnPayQR" onclick="switchPayMethod('QR')" class="flex-1 py-2 rounded-xl text-white/50">📱 QR Code</button>
+            </div>
+
+            <p id="paymentInfo" class="text-center font-bold text-violet-400 mb-4"></p>
+            <div class="checkout-steps mb-4">
+                <span class="checkout-step active">Review</span>
+                <span class="checkout-step" id="checkoutStepPay">Pay</span>
+                <span class="checkout-step" id="checkoutStepDone">Access</span>
+            </div>
+
+            <div id="cardSection">
+                <div class="bg-black/30 p-4 rounded-3xl mb-4 border border-white/5">
+                    <input type="text" id="cardNum" class="styled-input mb-3" placeholder="16-Digit Card Number" maxlength="16">
+                    <div class="row g-2">
+                        <div class="col-6"><input type="text" id="cardExpiry" class="styled-input" placeholder="MM/YY" maxlength="5"></div>
+                        <div class="col-6"><input type="password" id="cardCvv" class="styled-input" placeholder="CVV" maxlength="3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="qrSection" class="hidden text-center py-4 bg-black/30 rounded-3xl mb-4 border border-white/5">
+                <div class="bg-white p-2 inline-block rounded-xl mb-2">
+                    <img id="qrImg" src="" class="w-64 h-64" alt="Payment QR">
+                </div>
+                <div id="qrLoading" class="hidden text-violet-400 text-sm mb-2">Generating Secure QR...</div>
+                <div id="qrStatusMsg" class="text-sm fw-bold text-yellow-400 mb-2">Waiting for payment...</div>
+                <div class="d-flex gap-2 justify-content-center flex-wrap mt-3">
+                    <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="openQrPaymentLink()">Open Demo Pay Page</button>
+                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="cancelQrPayment()">Cancel</button>
+                </div>
+                <p class="text-xs opacity-60 mt-3 mb-0">Scan the QR on your phone or press the payment button below after scanning.</p>
+            </div>
+
+            <button class="btn-primary-custom w-100 py-3" id="payBtn" onclick="validateAndPay()">Confirm Payment</button>
+        </div>
+    </div>
+</div>
+
+    <!-- Footer Section -->
+    <footer class="py-12 border-t border-white/5 opacity-40 text-center">
+        <p class="small">© 2026 BOOKHEAVEN PRO LIBRARY</p>
+    </footer>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // --- GLOBAL CONFIGURATION & STATE ---
+        const API_BASE = window.location.origin + '/api';
+        let currentPage = 1;
+        const booksPerPage = 8;
+        let allBooks = [], filteredBooks = [];
+        let currentUser = JSON.parse(localStorage.getItem('user')) || null;
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let tempTx = { price: 0, plan: '', method: 'Card' };
+        let pollInterval = null;
+        let currentTxId = null;
+        let currentPaymentUrl = '';
+        let verifiedRegistrationOtp = '';
+        let paymentFinalized = false;
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        // Notification Pop-up
+        function showToast(message) {
+            const toastEl = document.getElementById('liveToast');
+            const toastMsg = document.getElementById('toastMsg');
+            
+            // Set the message
+            toastMsg.innerText = message;
+            
+            // Create or get the Bootstrap instance
+            let toast = bootstrap.Toast.getInstance(toastEl);
+            if (!toast) {
+                toast = new bootstrap.Toast(toastEl, { delay: 3000 }); // Visible for 3 seconds
+            }
+            
+            toast.show();
+        }
+
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('themePreference');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeIcon').innerText = '🌙';
+            }
+        }
+
+        // --- APP INITIALIZATION ---
+        async function init() {
+            applySavedTheme();
+            checkMembershipExpiry();
+            updateAuthUI();
+            updateCartBadge();
+            loadCarousel();
+            
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+            document.getElementById('bookGrid').classList.add('hidden');
+            
+            try {
+                const res = await fetch(`${API_BASE}/books`);
+                allBooks = await res.json();
+                filteredBooks = [...allBooks];
+                render();
+            } catch (err) { console.error("Books fetch error", err); }
+            finally {
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('bookGrid').classList.remove('hidden');
+            }
+        }
+
+        // --- CAROUSEL MANAGEMENT ---
+        async function loadCarousel() {
+            try {
+                const res = await fetch(`${API_BASE}/carousel`);
+                const slides = await res.json();
+                
+                if (slides.length > 0) {
+                    const staticHero = document.getElementById('staticHero');
+                    if(staticHero) staticHero.classList.remove('active');
+                    
+                    const membershipSlide = document.getElementById('membership-trigger');
+                    membershipSlide.classList.remove('active');
+
+                    const slidesHtml = slides.map((s, i) => {
+                        const imgUrl = s.image_url.startsWith('http') ? s.image_url : window.location.origin + s.image_url;
+                        return `
+                        <div class="carousel-item ${i === 0 ? 'active' : ''}">
+                            <div class="hero-content-wrapper flex items-center" style="background: linear-gradient(to right, rgba(0,0,0,0.9), rgba(0,0,0,0.3)), url('${imgUrl}'); background-size: cover; background-position: center;">
+                                <div class="container">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8 text-center text-md-start">
+                                            <h1 class="hero-title text-5xl fw-bold mb-3">${s.title}</h1>
+                                            <p class="fs-5 opacity-80 mb-5 max-w-lg text-white">${s.subtitle}</p>
+                                            <a href="#books-section" class="btn-primary-custom px-5 py-3 no-underline">Explore Collection</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                    }).join('');
+                    
+                    membershipSlide.insertAdjacentHTML('beforebegin', slidesHtml);
+                }
+            } catch (e) { console.error("Carousel error", e); }
+        }
+
+        // --- FILE DOWNLOAD HANDLING ---
+        function downloadFile(url, title) {
+            const fileName = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + ".pdf";
+            const proxyUrl = `${API_BASE}/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(fileName)}`;
+            const link = document.createElement('a');
+            link.href = proxyUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- AUTHENTICATION & VALIDATION ---
+        function setValidationError(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.innerText = message;
+            el.classList.remove('hidden');
+        }
+
+        function clearAllValidationErrors() {
+            const errors = document.querySelectorAll('.text-red-500');
+            errors.forEach(err => err.classList.add('hidden'));
+            document.getElementById('logStatus').classList.add('hidden');
+            document.getElementById('regStatus').classList.add('hidden');
+        }
+
+        function setRegistrationStep(step) {
+            const steps = {
+                account: {
+                    section: 'regInputs',
+                    dot: 'stepDotAccount'
+                },
+                otp: {
+                    section: 'otpSection',
+                    dot: 'stepDotOtp'
+                },
+                details: {
+                    section: 'detailsSection',
+                    dot: 'stepDotDetails'
+                }
+            };
+
+            Object.values(steps).forEach(item => {
+                document.getElementById(item.section).style.display = 'none';
+                document.getElementById(item.dot).classList.remove('active', 'done');
+            });
+
+            document.getElementById(steps[step].section).style.display = 'block';
+            document.getElementById(steps[step].dot).classList.add('active');
+
+            if (step === 'otp' || step === 'details') {
+                document.getElementById('stepDotAccount').classList.add('done');
+            }
+            if (step === 'details') {
+                document.getElementById('stepDotOtp').classList.add('done');
+            }
+        }
+
+        function resetRegistrationFlow() {
+            document.getElementById('regInputs').style.display = 'block';
+            document.getElementById('otpSection').style.display = 'none';
+            document.getElementById('detailsSection').style.display = 'none';
+            document.getElementById('sendOtpBtn').disabled = false;
+            document.getElementById('sendOtpBtn').innerText = "Send OTP";
+            document.getElementById('verifyBtn').disabled = false;
+            document.getElementById('verifyBtn').innerText = "Verify OTP & Continue";
+            document.getElementById('completeRegBtn').disabled = false;
+            document.getElementById('completeRegBtn').innerText = "Complete & Login";
+            verifiedRegistrationOtp = '';
+            setRegistrationStep('account');
+        }
+
+        function validateAndLogin() {
+            clearAllValidationErrors();
+            const email = document.getElementById('logEmail').value.trim();
+            const pass = document.getElementById('logPass').value;
+            let isValid = true;
+
+            if (!email) {
+                setValidationError('logEmailError', 'Email is required');
+                isValid = false;
+            } else if (!emailPattern.test(email)) {
+                setValidationError('logEmailError', 'Invalid email format');
+                isValid = false;
+            }
+
+            if (!pass) {
+                setValidationError('logPassError', 'Password is required');
+                isValid = false;
+            }
+
+            if (isValid) doLogin();
+        }
+
+        function validateAndSendOTP() {
+            clearAllValidationErrors();
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const pass = document.getElementById('regPass').value;
+            const confirmPass = document.getElementById('regConfirmPass').value;
+            let isValid = true;
+
+            if (!name) { setValidationError('regNameError', 'Username is required'); isValid = false; }
+            if (!email) { setValidationError('regEmailError', 'Email is required'); isValid = false; }
+            else if (!emailPattern.test(email)) { setValidationError('regEmailError', 'Invalid email format'); isValid = false; }
+            
+            if (pass.length < 6) { setValidationError('regPassError', 'Minimum 6 characters required'); isValid = false; }
+            if (pass !== confirmPass) { setValidationError('regConfirmPassError', 'Passwords do not match'); isValid = false; }
+
+            if (isValid) sendOTP();
+        }
+
+        async function sendOTP() {
+            const email = document.getElementById('regEmail').value;
+            const btn = document.getElementById('sendOtpBtn');
+            const status = document.getElementById('regStatus');
+            const originalText = btn.innerText;
+            status.classList.add('hidden');
+            
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Sending...`;
+            
+            try {
+                const res = await fetch(`${API_BASE}/send-otp`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    verifiedRegistrationOtp = '';
+                    setRegistrationStep('otp');
+                } else {
+                    status.innerText = data.message;
+                    status.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerText = "Send OTP";
+                }
+            } catch(e) { 
+                status.innerText = "Server error. Try again.";
+                status.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerText = "Send OTP";
+            }
+        }
+
+        function goBackToReg() {
+            setRegistrationStep('account');
+            document.getElementById('sendOtpBtn').disabled = false;
+            document.getElementById('sendOtpBtn').innerText = "Send OTP";
+        }
+
+        function showOtpStep() {
+            setRegistrationStep('otp');
+        }
+
+        async function resendOTP() {
+            const email = document.getElementById('regEmail').value;
+            const btn = document.getElementById('resendOtpBtn');
+            
+            btn.disabled = true;
+            btn.innerText = "Sending...";
+            
+            try {
+                const res = await fetch(`${API_BASE}/send-otp`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    verifiedRegistrationOtp = '';
+                    showToast("OTP Resent Successfully!");
+                } else {
+                    showToast(data.message || "Failed to resend OTP");
+                }
+            } catch(e) { 
+                showToast("Server error. Try again.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Resend OTP";
+            }
+        }
+
+        async function verifyOtpAndContinue() {
+            const email = document.getElementById('regEmail').value;
+            const otp = document.getElementById('otpInput').value.trim();
+            const btn = document.getElementById('verifyBtn');
+            const status = document.getElementById('regStatus');
+
+            status.classList.add('hidden');
+
+            if(!otp || otp.length !== 6) {
+                showToast("Please enter the 6-digit OTP");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Checking OTP...";
+
+            try {
+                const res = await fetch(`${API_BASE}/verify-otp`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, otp })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    verifiedRegistrationOtp = otp;
+                    setRegistrationStep('details');
+                    showToast("OTP verified. Add your reader details.");
+                } else {
+                    status.innerText = data.message;
+                    status.classList.remove('hidden');
+                }
+            } catch(e) {
+                showToast("Connection failed. Please try again.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Verify OTP & Continue";
+            }
+        }
+
+        async function completeRegistration() {
+            const username = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPass').value;
+            const otp = verifiedRegistrationOtp || document.getElementById('otpInput').value.trim();
+            const age = document.getElementById('regAge').value;
+            const favorite_author = document.getElementById('regFavAuthor').value.trim();
+            const favorite_genre = document.getElementById('regFavGenre').value;
+            const reading_goal = document.getElementById('regReadingGoal').value;
+            const reading_level = document.getElementById('regReadingLevel').value;
+            const btn = document.getElementById('completeRegBtn');
+            const status = document.getElementById('regStatus');
+
+            status.classList.add('hidden');
+            document.getElementById('regAgeError').classList.add('hidden');
+
+            const parsedAge = Number(age);
+            if(!parsedAge || parsedAge < 5 || parsedAge > 120) {
+                setValidationError('regAgeError', 'Age is required and must be valid');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerText = "Creating Account...";
+            try {
+                const res = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        otp,
+                        age: parsedAge,
+                        favorite_author,
+                        favorite_genre,
+                        reading_goal,
+                        reading_level
+                    })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showToast("Account created. You are logged in!");
+                    const regModal = bootstrap.Modal.getInstance(document.getElementById('regModal'));
+                    if (regModal) regModal.hide();
+                    document.getElementById('regModal').addEventListener('hidden.bs.modal', () => {
+                        document.querySelectorAll('#regModal input').forEach(input => input.value = '');
+                        resetRegistrationFlow();
+                    }, { once: true });
+                    setTimeout(() => location.reload(), 900);
+                } else {
+                    status.innerText = data.message;
+                    status.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerText = "Complete & Login";
+                }
+            } catch(e) { 
+                btn.disabled = false; 
+                btn.innerText = "Complete & Login";
+                showToast("Connection failed. Please try again.");
+            }
+        }
+
+        // --- PASSWORD MANAGEMENT ---
+        function showChangePass() {
+            bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+            new bootstrap.Modal(document.getElementById('changePassModal')).show();
+        }
+
+        function showLoginFromChangePass() {
+            bootstrap.Modal.getInstance(document.getElementById('changePassModal')).hide();
+            new bootstrap.Modal(document.getElementById('loginModal')).show();
+        }
+
+        async function handleChangePassword() {
+            const email = document.getElementById('cpEmail').value;
+            const oldPass = document.getElementById('cpOldPass').value;
+            const newPass = document.getElementById('cpNewPass').value;
+            const btn = document.getElementById('changePassBtn');
+            const status = document.getElementById('changePassStatus');
+            
+            status.classList.add('hidden');
+            
+            if(!email || !oldPass || !newPass) {
+                status.innerText = "All fields are required.";
+                status.classList.remove('bg-green-500/10', 'text-green-400');
+                status.classList.add('bg-red-500/10', 'text-red-400');
+                status.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Updating...";
+
+            try {
+                const res = await fetch(`${API_BASE}/change-password`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, oldPassword: oldPass, newPassword: newPass })
+                });
+                const data = await res.json();
+
+                if(data.success) {
+                    status.innerText = "Password updated successfully!";
+                    status.classList.remove('bg-red-500/10', 'text-red-400');
+                    status.classList.add('bg-green-500/10', 'text-green-400');
+                    status.classList.remove('hidden');
+                    setTimeout(() => {
+                        showLoginFromChangePass();
+                        document.getElementById('cpOldPass').value = '';
+                        document.getElementById('cpNewPass').value = '';
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || "Update failed");
+                }
+            } catch(e) {
+                status.innerText = e.message || "Server Error";
+                status.classList.remove('bg-green-500/10', 'text-green-400');
+                status.classList.add('bg-red-500/10', 'text-red-400');
+                status.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Update Password";
+            }
+        }
+
+        function openRegistrationFromLogin(email) {
+            const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+            if (loginModal) loginModal.hide();
+
+            resetRegistrationFlow();
+            document.getElementById('regEmail').value = email || '';
+            setTimeout(() => {
+                new bootstrap.Modal(document.getElementById('regModal')).show();
+            }, 300);
+        }
+
+        // Login
+        async function doLogin() {
+            const status = document.getElementById('logStatus');
+            const btn = document.getElementById('loginBtnAction');
+            status.classList.add('hidden');
+
+            btn.disabled = true;
+            btn.innerText = "Signing In...";
+
+            try {
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        email: document.getElementById('logEmail').value, 
+                        password: document.getElementById('logPass').value 
+                    })
+                });
+                const data = await res.json();
+                if(data.success) { 
+                    localStorage.setItem('user', JSON.stringify(data.user)); 
+                    showToast("Welcome back!");
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    status.innerText = data.message;
+                    status.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerText = "Sign In";
+                    if (data.code === 'USER_NOT_FOUND') {
+                        setTimeout(() => openRegistrationFromLogin(document.getElementById('logEmail').value.trim()), 700);
+                    }
+                }
+            } catch (e) {
+                status.innerText = "Connection error. Try again.";
+                status.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerText = "Sign In";
+            }
+        }
+
+        function doLogout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('cart'); 
+            window.location.href = 'index.html'; 
+        }
+
+        // --- SHOPPING CART LOGIC ---
+        function updateCartBadge() { document.getElementById('cartCount').innerText = cart.length; }
+
+        function addToCart(title, price, isMembership = false, days = 0) {
+            if(!currentUser) {
+                new bootstrap.Modal(document.getElementById('loginModal')).show();
+                return;
+            }
+            if (cart.find(item => item.title === title)) {
+                showToast("Item is already in your cart");
+                return;
+            }
+            cart.push({ title, price, isMembership, days });
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+            const pModal = bootstrap.Modal.getInstance(document.getElementById('planModal'));
+            if(pModal) pModal.hide();
+            showToast("Added to cart!");
+        }
+
+        // cart modal
+        function openCart() {
+            if(cart.length === 0) {
+                const cartModal = bootstrap.Modal.getInstance(document.getElementById('cartModal'));
+                if (cartModal) cartModal.hide();
+                showToast("Your cart is empty");
+                return;
+            }
+            const list = document.getElementById('cartItemsList');
+            let total = 0;
+            list.innerHTML = cart.map((item, index) => {
+                total += item.price;
+                return `<div class="d-flex justify-content-between border-bottom border-secondary py-2">
+                    <span>${item.title}</span>
+                    <span>₹${item.price} <button class="btn btn-sm text-danger" onclick="removeItem(${index})">×</button></span>
+                </div>`;
+            }).join('');
+            document.getElementById('cartTotal').innerText = `₹${total}`;
+            new bootstrap.Modal(document.getElementById('cartModal')).show();
+        }
+
+        // remove item from cart
+        function removeItem(index) {
+            cart.splice(index, 1);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+            openCart();
+        }
+
+
+        // proceed payment
+        function proceedToPaymentFromCart() {
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            const planItem = cart.find(i => i.isMembership);
+            tempTx.price = total;
+            tempTx.plan = planItem ? planItem.title : "Books Purchase";
+            tempTx.method = 'Card';
+            paymentFinalized = false;
+            currentTxId = null;
+            currentPaymentUrl = '';
+            if(pollInterval) clearInterval(pollInterval);
+            document.getElementById('paymentInfo').innerText = `Total Amount: ₹${total}`;
+            bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide();
+            new bootstrap.Modal(document.getElementById('paymentModal')).show();
+            switchPayMethod('Card');
+        }
+
+        // --- PAYMENT PROCESSING ---
+        async function switchPayMethod(method) {
+            tempTx.method = method;
+            const cardSec = document.getElementById('cardSection');
+            const qrSec = document.getElementById('qrSection');
+            const btnCard = document.getElementById('btnPayCard');
+            const btnQR = document.getElementById('btnPayQR');
+            const payBtn = document.getElementById('payBtn');
+            
+            if(pollInterval) clearInterval(pollInterval);
+
+            if (method === 'Card') {
+                cardSec.classList.remove('hidden');
+                qrSec.classList.add('hidden');
+                payBtn.classList.remove('hidden');
+                payBtn.disabled = false;
+                payBtn.innerText = "Confirm Payment";
+                btnCard.className = "flex-1 py-2 rounded-xl bg-violet-600 text-white";
+                btnQR.className = "flex-1 py-2 rounded-xl text-white/50";
+                document.getElementById('checkoutStepPay').classList.add('active');
+                document.getElementById('checkoutStepDone').classList.remove('active');
+            } else {
+                currentTxId = null;
+                currentPaymentUrl = '';
+                cardSec.classList.add('hidden');
+                qrSec.classList.remove('hidden');
+                payBtn.classList.remove('hidden');
+                payBtn.disabled = true;
+                payBtn.innerText = "I Scanned, Pay Now";
+                btnQR.className = "flex-1 py-2 rounded-xl bg-violet-600 text-white";
+                btnCard.className = "flex-1 py-2 rounded-xl text-white/50";
+                
+                document.getElementById('qrImg').style.opacity = '0.3';
+                document.getElementById('qrLoading').classList.remove('hidden');
+                document.getElementById('qrStatusMsg').innerText = "Initializing...";
+                document.getElementById('checkoutStepPay').classList.add('active');
+                document.getElementById('checkoutStepDone').classList.remove('active');
+
+                try {
+                    const res = await fetch(`${API_BASE}/qr/generate`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ amount: tempTx.price })
+                    });
+                    if(!res.ok) throw new Error("Server Error: " + res.status);
+                    const data = await res.json();
+
+                    if(data.success) {
+                        currentTxId = data.txId;
+                        currentPaymentUrl = data.paymentUrl;
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.paymentUrl)}`;
+                        document.getElementById('qrImg').src = qrUrl;
+                        document.getElementById('qrImg').style.opacity = '1';
+                        document.getElementById('qrLoading').classList.add('hidden');
+                        document.getElementById('qrStatusMsg').innerText = "Waiting for payment...";
+                        document.getElementById('qrStatusMsg').className = "text-sm fw-bold text-yellow-400 mb-2";
+                        payBtn.disabled = false;
+                        startPolling(currentTxId);
+                    }
+                } catch(e) {
+                    console.error(e);
+                    showToast("QR Error: " + e.message);
+                    document.getElementById('qrLoading').classList.add('hidden');
+                    document.getElementById('qrStatusMsg').innerText = "Connection Failed";
+                    document.getElementById('qrStatusMsg').className = "text-sm fw-bold text-red-400 mb-2";
+                }
+            }
+        }
+
+        function openQrPaymentLink() {
+            if(!currentPaymentUrl) {
+                showToast("QR is still loading. Please wait.");
+                return;
+            }
+            window.open(currentPaymentUrl, '_blank');
+        }
+
+        async function confirmScannedQrPayment() {
+            if(!currentTxId) {
+                showToast("Generate the QR first.");
+                return;
+            }
+
+            document.getElementById('qrStatusMsg').innerText = "Confirming payment...";
+            document.getElementById('qrStatusMsg').className = "text-sm fw-bold text-violet-400 mb-2";
+
+            await fetch(`${API_BASE}/qr/update/${currentTxId}/SUCCESS`, { method: 'POST' });
+            finalizePayment();
+        }
+
+        async function cancelQrPayment() {
+            if(!currentTxId) return;
+            await fetch(`${API_BASE}/qr/update/${currentTxId}/FAILED`, { method: 'POST' });
+            if(pollInterval) clearInterval(pollInterval);
+            document.getElementById('qrStatusMsg').innerText = "Payment cancelled";
+            document.getElementById('qrStatusMsg').className = "text-sm fw-bold text-red-400 mb-2";
+        }
+
+        // make connection for QR
+        function startPolling(txId) {
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/qr/status/${txId}`);
+                    const data = await res.json();
+
+                    if (data.status === 'SUCCESS') {
+                        clearInterval(pollInterval);
+                        document.getElementById('qrStatusMsg').innerText = "Payment Received!";
+                        document.getElementById('qrStatusMsg').className = "text-sm fw-bold text-green-400 mb-2";
+                        finalizePayment();
+                    } else if (data.status === 'FAILED') {
+                        clearInterval(pollInterval);
+                        document.getElementById('qrStatusMsg').innerText = "Payment Cancelled/Failed";
+                        document.getElementById('qrStatusMsg').className = "text-sm fw-bold text-red-400 mb-2";
+                    }
+                } catch(e) { console.log("Polling error", e); }
+            }, 2000);
+        }
+
+        // validation for card-payment
+        function validateAndPay() {
+            if (tempTx.method === 'QR') {
+                confirmScannedQrPayment();
+                return;
+            }
+
+            if (tempTx.method === 'Card') {
+                const num = document.getElementById('cardNum').value;
+                const exp = document.getElementById('cardExpiry').value;
+                const cvv = document.getElementById('cardCvv').value;
+
+                if (!/^\d{16}$/.test(num)) return showToast("Please enter a valid 16-digit card number");
+                if (!exp.includes('/') || exp.length < 5) return showToast("Invalid Expiry format (MM/YY)");
+                if (cvv.length < 3) return showToast("Invalid CVV");
+            }
+            finalizePayment();
+        }
+
+        // Finaliza Payment
+        async function finalizePayment() {
+            if (paymentFinalized) return;
+            paymentFinalized = true;
+            const btn = document.getElementById('payBtn');
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+            document.getElementById('checkoutStepDone').classList.add('active');
+
+            // 1. Identify items in cart
+            const membership = cart.find(i => i.isMembership);
+            const purchasedBookTitles = cart.filter(i => !i.isMembership).map(i => i.title);
+
+            // 2. Calculate new membership status if applicable
+            let endDate = currentUser.end_date;
+            let planName = currentUser.membership_plan;
+
+            if (membership) {
+                const end = new Date();
+                end.setDate(end.getDate() + membership.days);
+                endDate = end.toISOString();
+                planName = membership.title.replace('Membership: ', '');
+            }
+
+            // 3. Send transaction to server
+            try {
+                const res = await fetch(`${API_BASE}/update-membership-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: currentUser.email,
+                        plan: planName,
+                        end_date: endDate,
+                        price: tempTx.price,
+                        item_name: tempTx.plan,
+                        payment_method: tempTx.method,
+                        purchasedBooks: purchasedBookTitles 
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    // 4. Update local session and clear cart
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('cart', JSON.stringify([]));
+
+                    showToast(`Payment Successful!`);
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast("Server Error: " + data.message);
+                    paymentFinalized = false;
+                    btn.disabled = false;
+                    btn.innerText = tempTx.method === 'QR' ? "I Scanned, Pay Now" : "Confirm Payment";
+                }
+            } catch (e) {
+                showToast("Connection Error.");
+                paymentFinalized = false;
+                btn.disabled = false;
+                btn.innerText = tempTx.method === 'QR' ? "I Scanned, Pay Now" : "Confirm Payment";
+            }
+        }
+
+        // MEMBERSHIP OPTIOS
+        function openMembershipSelection() {
+            if(!currentUser) {
+                new bootstrap.Modal(document.getElementById('loginModal')).show();
+                return;
+            }
+            new bootstrap.Modal(document.getElementById('planModal')).show();
+        }
+
+        // UI CHANGE AFTER LOGIN
+        function updateAuthUI() {
+            const zone = document.getElementById('auth-zone');
+            if (currentUser) {
+                const isAdmin = currentUser.role === 'admin';
+                const displayPlan = (currentUser.membership_plan || 'Free').toUpperCase();
+                zone.innerHTML = `
+                    <div class="dropdown">
+                        <button class="btn btn-primary btn-sm rounded-pill px-4 dropdown-toggle shadow-sm" data-bs-toggle="dropdown">
+                            👤 ${currentUser.username} <small class="ms-1 opacity-75">(${displayPlan})</small>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg border-secondary">
+                            <li><a class="dropdown-item py-2" href="profile.html">⚙️ My Profile</a></li>
+                            ${isAdmin ? `<li><a class="dropdown-item text-warning fw-bold py-2" href="admin.html">📊 Admin Dashboard</a></li>` : ''}
+                            <li><hr class="dropdown-divider border-secondary"></li>
+                            <li><a class="dropdown-item text-danger py-2" href="#" onclick="doLogout()">🚪 Logout</a></li>
+                        </ul>
+                    </div>`;
+            } else {
+                zone.innerHTML = `
+                    <button class="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 bg-white/5 text-white border border-white/10 hover:bg-white/10" 
+                        data-bs-toggle="modal" data-bs-target="#loginModal">
+                        Login
+                    </button>
+                    <button class="btn-primary-custom px-4 py-2 text-sm ms-2 hover:scale-105" data-bs-toggle="modal" data-bs-target="#regModal">Register</button>`;
+            }
+        }
+
+        // --- SEARCH & BOOK RENDERING ---
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            filteredBooks = allBooks.filter(b => 
+                b.title.toLowerCase().includes(query) || 
+                b.author.toLowerCase().includes(query)
+            );
+            currentPage = 1;
+            render();
+        }
+
+        function handleSearchKey(e) {
+            if(e.key === 'Enter') performSearch();
+        }
+
+
+        // renderBooks
+        function render() {
+            const grid = document.getElementById('bookGrid');
+            const startIndex = (currentPage - 1) * booksPerPage;
+            const endIndex = startIndex + booksPerPage;
+            const paginatedBooks = filteredBooks.slice(startIndex, endIndex);
+
+            document.getElementById('pageNumber').innerText = currentPage;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = endIndex >= filteredBooks.length;
+
+            grid.innerHTML = paginatedBooks.map(b => {
+                // Check ownership and access rights
+                const isOwned = currentUser && currentUser.history && 
+                                currentUser.history.some(h => h.title && h.title.trim().toLowerCase() === b.title.trim().toLowerCase());
+                const isPremium = currentUser && currentUser.membership_plan && 
+                                currentUser.membership_plan.toLowerCase() !== 'free';
+                const hasAccess = b.is_free || isPremium || isOwned;
+                const priceINR = b.price ? Math.round(b.price) : 199;
+
+                return `
+                    <div class="col-md-3">
+                        <div class="card book-card shadow h-100 border-0 group">
+                            <div class="overflow-hidden relative">
+                                <img src="${b.cover_url}" class="book-img transition-transform duration-500 group-hover:scale-110 cursor-pointer" alt="${b.title}" onclick="showBookDetails(${b.id})">
+                                ${isOwned ? '<span class="badge bg-success position-absolute top-2 right-2 m-2 shadow-lg">OWNED</span>' : ''}
+                                ${b.is_free ? '<span class="badge bg-info position-absolute top-2 left-2 m-2 shadow-lg">FREE</span>' : ''}
+                            </div>
+                            <div class="card-body d-flex flex-column book-card-body">
+                                <div class="mb-2">
+                                    <h6 class="fw-bold mb-1 text-truncate cursor-pointer hover:text-violet-400 transition-colors" onclick="showBookDetails(${b.id})">${b.title}</h6>
+                                    <p class="small opacity-75 mb-0">${b.author}</p>
+                                </div>
+                                <div class="mt-auto pt-3">
+                                ${!hasAccess ? 
+                                    `<button class="btn-primary-custom btn-sm w-100 rounded-pill" onclick="addToCart('${b.title}', ${priceINR})">🛒 Add ₹${priceINR}</button>` : 
+                                    `<div class="d-flex gap-2">
+                                        <a href="${b.book_url}" target="_blank" class="btn-primary-custom btn-sm flex-1 rounded-pill no-underline">Read</a>
+                                        ${b.is_free ? `<button onclick="downloadFile('${b.book_url}', '${b.title}')" class="btn btn-outline-light btn-sm px-3 rounded-pill" title="Download PDF">⬇</button>` : ''}
+                                    </div>`
+                                }
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // books details
+        function showBookDetails(id) {
+            const book = allBooks.find(b => b.id === id);
+            if(!book) return;
+
+            document.getElementById('modalBookTitle').innerText = book.title;
+            document.getElementById('modalBookAuthor').innerText = book.author;
+            document.getElementById('modalBookCover').src = book.cover_url;
+            document.getElementById('modalBookDescription').innerText = book.description || "This title is part of our curated digital archive. Access high-quality content directly in your browser or download for offline reading.";
+
+            const isOwned = currentUser && currentUser.history && 
+                            currentUser.history.some(h => h.title && h.title.trim().toLowerCase() === book.title.trim().toLowerCase());
+            const isPremium = currentUser && currentUser.membership_plan && 
+                            currentUser.membership_plan.toLowerCase() !== 'free';
+            const hasAccess = book.is_free || isPremium || isOwned;
+            const priceINR = book.price ? Math.round(book.price) : 199;
+
+            const actionDiv = document.getElementById('modalBookActions');
+            
+            if(hasAccess) {
+                actionDiv.innerHTML = `
+                    <div class="d-grid gap-2">
+                        <a href="${book.book_url}" target="_blank" class="btn btn-primary-custom py-3">📖 Read Now</a>
+                        ${book.is_free ? `<button onclick="downloadFile('${book.book_url}', '${book.title}')" class="btn btn-outline-light py-2">⬇ Download PDF</button>` : ''}
+                    </div>`;
+            } else {
+                actionDiv.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-between mb-3 bg-white/5 p-3 rounded-xl border border-white/10">
+                        <span class="opacity-70">Price</span>
+                        <span class="text-2xl fw-bold text-green-400">₹${priceINR}</span>
+                    </div>
+                    <button onclick="addToCart('${book.title}', ${priceINR}); bootstrap.Modal.getInstance(document.getElementById('bookDetailsModal')).hide()" class="btn btn-primary-custom w-100 py-3">Add to Cart</button>`;
+            }
+            new bootstrap.Modal(document.getElementById('bookDetailsModal')).show();
+        }
+
+        // change page
+        function changePage(direction) {
+            currentPage += direction;
+            render();
+            document.getElementById('books-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Check memebrship expiry
+        function checkMembershipExpiry() {
+            if (currentUser && currentUser.membership_plan !== 'free' && currentUser.end_date) {
+                if (new Date() > new Date(currentUser.end_date)) {
+                    currentUser.membership_plan = 'free';
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    // reload page
+                    location.reload();
+                }
+            }
+        }
+
+        function toggleMode() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            localStorage.setItem('themePreference', isLight ? 'light' : 'dark');
+            document.getElementById('themeIcon').innerText = isLight ? '🌙' : '🌓';
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>

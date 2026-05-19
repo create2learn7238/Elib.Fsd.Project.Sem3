@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: bookheaven-elibrary
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # Set this manually in Render dashboard
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: RENDER_EXTERNAL_URL
+        sync: false
+      - key: NODE_ENV
+        value: production
