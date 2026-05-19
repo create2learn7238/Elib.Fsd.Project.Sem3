@@ -11,6 +11,14 @@ services:
         sync: false
       - key: EMAIL_PASS
         sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_SECURE
+        value: true
       - key: RENDER_EXTERNAL_URL
         sync: false
       - key: NODE_ENV

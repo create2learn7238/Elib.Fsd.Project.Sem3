@@ -77,24 +77,66 @@ const buildSafeUser = async (user) => {
 };
 
 // --- EMAIL CONFIGURATION ---
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,                  // 465 for secure SSL, 587 for TLS
-    secure: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+const cleanEnv = (key) => (process.env[key] || '').trim();
 
-// Test email configuration on startup
-transporter.verify((error, success) => {
-    if (error) {
-        console.error('❌ Email transporter error:', error.message);
-    } else {
-        console.log('✅ Email service is ready for use');
+const getEmailConfig = () => {
+    const host = cleanEnv('SMTP_HOST') || 'smtp.gmail.com';
+    const port = Number(cleanEnv('SMTP_PORT') || 465);
+    const secureEnv = cleanEnv('SMTP_SECURE');
+    const secure = secureEnv ? secureEnv.toLowerCase() === 'true' : port === 465;
+    const user = cleanEnv('EMAIL_USER');
+    let pass = cleanEnv('EMAIL_PASS');
+
+    // Gmail app passwords are often copied as "abcd efgh ijkl mnop".
+    // SMTP auth expects the continuous 16-character value.
+    if (/gmail\.com$/i.test(host) || /smtp\.gmail\.com$/i.test(host)) {
+        pass = pass.replace(/\s+/g, '');
     }
-});
+
+    return {
+        configured: Boolean(user && pass),
+        host,
+        port,
+        secure,
+        user,
+        pass,
+        from: cleanEnv('EMAIL_FROM') || user
+    };
+};
+
+const createEmailTransporter = () => {
+    const emailConfig = getEmailConfig();
+    if (!emailConfig.configured) return null;
+
+    return nodemailer.createTransport({
+        host: emailConfig.host,
+        port: emailConfig.port,
+        secure: emailConfig.secure,
+        auth: {
+            user: emailConfig.user,
+            pass: emailConfig.pass
+        }
+    });
+};
+
+const verifyEmailTransport = async () => {
+    const emailConfig = getEmailConfig();
+    const transporter = createEmailTransporter();
+
+    if (!transporter) {
+        console.warn('Email service is not configured. Add EMAIL_USER and EMAIL_PASS in Render.');
+        return;
+    }
+
+    try {
+        await transporter.verify();
+        console.log(`Email service ready via ${emailConfig.host}:${emailConfig.port}`);
+    } catch (error) {
+        console.error('Email transporter error:', error.message);
+    }
+};
+
+verifyEmailTransport();
 
 let otpStore = {};
 let activeTransactions = {};
@@ -135,14 +177,54 @@ app.get('/api/books', async (req, res) => {
     }
 });
 
+app.get('/api/email-status', async (req, res) => {
+    const emailConfig = getEmailConfig();
+    const transporter = createEmailTransporter();
+
+    if (!transporter) {
+        return res.json({
+            success: false,
+            configured: false,
+            message: 'EMAIL_USER and EMAIL_PASS are missing on this server.'
+        });
+    }
+
+    try {
+        await transporter.verify();
+        res.json({
+            success: true,
+            configured: true,
+            host: emailConfig.host,
+            port: emailConfig.port,
+            from: emailConfig.from,
+            user: emailConfig.user.replace(/(^.).*(@.*$)/, '$1***$2'),
+            message: 'Email service is ready.'
+        });
+    } catch (err) {
+        res.json({
+            success: false,
+            configured: true,
+            host: emailConfig.host,
+            port: emailConfig.port,
+            message: err.message
+        });
+    }
+});
+
 // 2. SEND OTP
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ success: false, message: 'Email is required' });
 
     try {
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            return res.status(400).json({ success: false, message: 'Email service is not configured. Add EMAIL_USER and EMAIL_PASS.' });
+        const emailConfig = getEmailConfig();
+        const transporter = createEmailTransporter();
+
+        if (!transporter) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email service is not configured on the server. Add EMAIL_USER and EMAIL_PASS in Render environment variables.'
+            });
         }
 
         const rows = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -150,10 +232,14 @@ app.post('/api/send-otp', async (req, res) => {
 
         const otp = String(Math.floor(100000 + Math.random() * 900000));
         otpStore[email] = otp;
-        console.log(`📧 OTP generated for ${email}: ${otp}`);
+        if (process.env.NODE_ENV === 'production') {
+            console.log(`OTP generated for ${email}`);
+        } else {
+            console.log(`OTP generated for ${email}: ${otp}`);
+        }
 
         const mailOptions = {
-            from: `"BookHeaven Support" <${process.env.EMAIL_USER}>`,
+            from: `"BookHeaven Support" <${emailConfig.from}>`,
             to: email,
             subject: 'Verify your BookHeaven Account',
             html: `<div style="font-family:sans-serif;padding:20px;background:#0f0e17;color:white;">
@@ -164,11 +250,14 @@ app.post('/api/send-otp', async (req, res) => {
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`✅ OTP email sent to ${email}`);
+        console.log(`OTP email sent to ${email}`);
         res.json({ success: true, message: 'OTP sent successfully!' });
     } catch (err) {
-        console.error(`❌ OTP send error for ${email}:`, err.message);
-        res.status(500).json({ success: false, message: 'Failed to send OTP: ' + err.message });
+        console.error(`OTP send error for ${email}:`, err.message);
+        const help = err.code === 'EAUTH'
+            ? ' Gmail rejected the login. Use a Gmail App Password, not your normal Gmail password.'
+            : '';
+        res.status(500).json({ success: false, message: 'Failed to send OTP: ' + err.message + help });
     }
 });
 

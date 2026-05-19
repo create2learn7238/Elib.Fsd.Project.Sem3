@@ -1,5 +1,5 @@
 # 📚 BookHeaven E-Library
-### Link : https://elib-fsd-project-sem3.onrender.com/
+
 > A modern, full-stack e-library platform with secure authentication, user profiling, payment simulation, and comprehensive admin management.
 
 Node.js + Express + Neon PostgreSQL e-library with OTP registration, profile details, dummy card/QR payments, and admin management pages.
@@ -52,6 +52,10 @@ Node.js + Express + Neon PostgreSQL e-library with OTP registration, profile det
    DATABASE_URL=your_neon_connection_string
    EMAIL_USER=your_gmail@gmail.com
    EMAIL_PASS=your_gmail_app_password
+   EMAIL_FROM=your_gmail@gmail.com
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=true
    PORT=5000
    ```
 
@@ -138,15 +142,25 @@ Change the password after first login.
    DATABASE_URL
    EMAIL_USER
    EMAIL_PASS
+   EMAIL_FROM
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=true
    NODE_ENV=production
    ```
 
-5. Optional but helpful for QR links:
+5. Important for OTP on Render:
+   - Render does not use your local `.env` file. Add `EMAIL_USER` and `EMAIL_PASS` in the Render dashboard.
+   - For Gmail, `EMAIL_PASS` must be a Gmail App Password, not your normal Gmail password.
+   - If Google shows the app password as groups with spaces, you can paste it either with or without spaces.
+   - After deployment, open `/api/email-status` on your Render URL to confirm SMTP is ready.
+
+6. Optional but helpful for QR links:
    ```text
    RENDER_EXTERNAL_URL=https://your-render-service.onrender.com
    ```
 
-6. Run `neon_setup.sql` in Neon before opening the deployed site.
+7. Run `neon_setup.sql` in Neon before opening the deployed site.
 
 ---
 
