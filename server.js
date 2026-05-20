@@ -2,7 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const axios = require('axios');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
@@ -17,13 +17,12 @@ const APP_CONFIG = {
     HOST: '0.0.0.0',
     DATABASE_URL: 'postgresql://neondb_owner:npg_v7AsBi1gJyMS@ep-jolly-cloud-ap23jjt4-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
     PUBLIC_BASE_URL: 'https://elib-fsd-project-sem3.onrender.com',
-    EMAIL_USER: 'dixitp1311@gmail.com',
-    EMAIL_PASS: 'ugzf nnmg wwfp jrrx',
-    EMAIL_FROM: 'dixitp1311@gmail.com',
-    SMTP_HOST: 'smtp.gmail.com',
-    SMTP_PORT: 465,
-    SMTP_SECURE: true,
-    LOG_OTP_TO_CONSOLE: false
+    
+    // 🔥 NEW: SendGrid API Key (Get from https://sendgrid.com/free/)
+    SENDGRID_API_KEY: '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',
+    EMAIL_FROM: 'dixitp1311@gmail.com', // Must be verified in SendGrid
+    
+    LOG_OTP_TO_CONSOLE: true // Set to true for debugging
 };
 
 const app = express();
@@ -76,6 +75,66 @@ const ensureSchema = async () => {
     `);
 };
 
+// =========================================================
+// 🔥 EMAIL CONFIGURATION (SendGrid)
+// =========================================================
+
+// Initialize SendGrid
+if (APP_CONFIG.SENDGRID_API_KEY && APP_CONFIG.SENDGRID_API_KEY !== 'YOUR_SENDGRID_API_KEY_HERE') {
+    sgMail.setApiKey(APP_CONFIG.SENDGRID_API_KEY);
+    console.log('✅ SendGrid API initialized');
+} else {
+    console.warn('⚠️ SendGrid API key not configured - emails will be logged only');
+}
+
+/**
+ * Send email via SendGrid
+ */
+const sendEmail = async (to, subject, htmlContent) => {
+    const msg = {
+        to,
+        from: APP_CONFIG.EMAIL_FROM,
+        subject,
+        html: htmlContent
+    };
+
+    try {
+        if (APP_CONFIG.SENDGRID_API_KEY && APP_CONFIG.SENDGRID_API_KEY !== 'YOUR_SENDGRID_API_KEY_HERE') {
+            await sgMail.send(msg);
+            console.log(`✅ Email sent to ${to}`);
+            return { success: true };
+        } else {
+            // Fallback: just log
+            console.log(`📧 [EMAIL LOG] To: ${to} | Subject: ${subject}`);
+            if (APP_CONFIG.LOG_OTP_TO_CONSOLE) {
+                console.log('HTML:', htmlContent);
+            }
+            return { success: true, warning: 'Email service not configured' };
+        }
+    } catch (error) {
+        console.error('❌ SendGrid Error:', error.response?.body || error.message);
+        throw error;
+    }
+};
+
+/**
+ * Verify email service status
+ */
+const verifyEmailService = () => {
+    if (!APP_CONFIG.SENDGRID_API_KEY || APP_CONFIG.SENDGRID_API_KEY === 'YOUR_SENDGRID_API_KEY_HERE') {
+        console.warn('⚠️ SendGrid not configured. Get your free API key from: https://sendgrid.com/free/');
+        console.warn('⚠️ OTPs will be logged to console only.');
+    } else {
+        console.log('✅ Email service ready (SendGrid)');
+    }
+};
+
+verifyEmailService();
+
+let otpStore = {};
+let activeTransactions = {};
+
+// --- HELPERS ---
 const isOtpValid = (email, otp) => {
     const stored = otpStore[email];
     if (!stored) return false;
@@ -97,47 +156,6 @@ const getBaseUrl = (req) => {
     if (configuredUrl) return configuredUrl;
     return `${req.protocol}://${req.get('host')}`;
 };
-
-// --- EMAIL CONFIGURATION ---
-const getEmailConfig = () => {
-    const host = APP_CONFIG.SMTP_HOST;
-    const port = APP_CONFIG.SMTP_PORT;
-    const secure = APP_CONFIG.SMTP_SECURE;
-    const user = APP_CONFIG.EMAIL_USER;
-    let pass = APP_CONFIG.EMAIL_PASS;
-
-    if (/gmail\.com$/i.test(host) || /smtp\.gmail\.com$/i.test(host)) {
-        pass = pass.replace(/\s+/g, '');
-    }
-
-    return { host, port, secure, user, pass, from: APP_CONFIG.EMAIL_FROM || user };
-};
-
-const createEmailTransporter = () => {
-    const emailConfig = getEmailConfig();
-    return nodemailer.createTransport({
-        host: emailConfig.host,
-        port: emailConfig.port,   // 465 = implicit SSL (works on Render free tier)
-        secure: emailConfig.secure, // true for 465
-        auth: { user: emailConfig.user, pass: emailConfig.pass },
-        tls: { rejectUnauthorized: false }
-    });
-};
-
-const verifyEmailTransport = async () => {
-    const transporter = createEmailTransporter();
-    try {
-        await transporter.verify();
-        console.log(`✅ Email service ready via ${APP_CONFIG.SMTP_HOST}:${APP_CONFIG.SMTP_PORT}`);
-    } catch (error) {
-        console.error('❌ Email transporter error:', error.message);
-    }
-};
-
-verifyEmailTransport();
-
-let otpStore = {};
-let activeTransactions = {};
 
 // --- MULTER CONFIG ---
 const storage = multer.diskStorage({
@@ -168,53 +186,80 @@ app.get('/api/books', async (req, res) => {
     }
 });
 
+// 🔥 UPDATED: Email status endpoint
 app.get('/api/email-status', async (req, res) => {
-    const transporter = createEmailTransporter();
     try {
-        await transporter.verify();
+        const configured = APP_CONFIG.SENDGRID_API_KEY && APP_CONFIG.SENDGRID_API_KEY !== 'YOUR_SENDGRID_API_KEY_HERE';
+        
         res.json({
             success: true,
-            configured: true,
-            host: APP_CONFIG.SMTP_HOST,
-            port: APP_CONFIG.SMTP_PORT,
+            configured,
+            service: 'SendGrid',
             from: APP_CONFIG.EMAIL_FROM,
-            user: APP_CONFIG.EMAIL_USER.replace(/(^.).*(@.*$)/, '$1***$2')
+            status: configured ? 'active' : 'not_configured',
+            message: configured ? 'Email service is ready' : 'SendGrid API key not set'
         });
     } catch (err) {
-        res.json({ success: false, configured: true, message: err.message });
+        res.json({ success: false, message: err.message });
     }
 });
 
+// 🔥 UPDATED: Send OTP endpoint
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ success: false, message: 'Email is required' });
 
     try {
-        const transporter = createEmailTransporter();
         const rows = await query('SELECT id FROM users WHERE email = $1', [email]);
         if (rows.length > 0) return res.json({ success: false, message: 'Email already exists' });
 
         const otp = String(Math.floor(100000 + Math.random() * 900000));
         otpStore[email] = otp;
+        
         if (APP_CONFIG.LOG_OTP_TO_CONSOLE) {
-            console.log(`OTP for ${email}: ${otp}`);
+            console.log(`🔐 OTP for ${email}: ${otp}`);
         }
 
-        const mailOptions = {
-            from: `"BookHeaven Support" <${APP_CONFIG.EMAIL_FROM}>`,
-            to: email,
-            subject: 'Verify your BookHeaven Account',
-            html: `<div style="font-family:sans-serif;padding:20px;background:#0f0e17;color:white;">
-                    <h2 style="color:#7f5af0">Welcome to BookHeaven!</h2>
-                    <p>Your OTP is: <b style="font-size:28px;color:#ff8906">${otp}</b></p>
-                    <p style="color:#999;font-size:12px">This OTP is valid for one-time verification only.</p>
-                   </div>`
-        };
+        const htmlContent = `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; border-radius: 20px;">
+                <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #667eea; margin: 0; font-size: 32px;">📚 BookHeaven</h1>
+                        <p style="color: #666; margin: 10px 0 0 0;">Your Gateway to Infinite Stories</p>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; text-align: center; margin: 30px 0;">
+                        <p style="color: white; margin: 0 0 15px 0; font-size: 16px;">Your Verification Code</p>
+                        <div style="background: white; display: inline-block; padding: 15px 40px; border-radius: 8px;">
+                            <span style="font-size: 36px; font-weight: bold; color: #667eea; letter-spacing: 8px;">${otp}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; color: #666; font-size: 14px;">
+                            ⏱️ This code expires in <strong>10 minutes</strong><br>
+                            🔒 Never share this code with anyone<br>
+                            💡 If you didn't request this, please ignore this email
+                        </p>
+                    </div>
+                    
+                    <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+                        © 2024 BookHeaven. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        `;
 
-        await transporter.sendMail(mailOptions);
-        res.json({ success: true, message: 'OTP sent successfully!' });
+        await sendEmail(email, '🔐 Verify Your BookHeaven Account', htmlContent);
+        
+        res.json({ success: true, message: 'OTP sent successfully! Check your email.' });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'Failed to send OTP: ' + err.message });
+        console.error('Send OTP Error:', err);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to send OTP. Please try again.',
+            error: err.message 
+        });
     }
 });
 
@@ -251,6 +296,22 @@ app.post('/api/register', async (req, res) => {
             [username, email, hashedPassword, parsedAge, favorite_author || null, favorite_genre || null, reading_goal || null, reading_level || null]
         );
         delete otpStore[email];
+        
+        // Send welcome email
+        try {
+            const welcomeHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #667eea;">Welcome to BookHeaven, ${username}! 🎉</h2>
+                    <p>Your account has been successfully created.</p>
+                    <p>Start exploring our vast collection of books today!</p>
+                    <a href="${APP_CONFIG.PUBLIC_BASE_URL}" style="display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0;">Explore Books</a>
+                </div>
+            `;
+            await sendEmail(email, '🎉 Welcome to BookHeaven!', welcomeHtml);
+        } catch (emailErr) {
+            console.warn('Welcome email failed:', emailErr.message);
+        }
+        
         const user = await buildSafeUser(rows[0]);
         res.json({ success: true, message: 'Registered!', user });
     } catch (err) {
@@ -542,8 +603,9 @@ const startServer = async () => {
         console.error('⚠️ Schema sync warning:', err.message);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, HOST, () => {
         console.log(`🚀 BookHeaven running at ${APP_CONFIG.PUBLIC_BASE_URL}`);
+        console.log(`📧 Email service: SendGrid`);
     });
 };
 
