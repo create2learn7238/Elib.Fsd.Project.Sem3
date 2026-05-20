@@ -35,7 +35,7 @@
                     <span class="logo-label text-xl font-extrabold tracking-tighter">BOOKHEAVEN</span>
                 </a>
 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 desktop-nav-links">
                     <a class="nav-item-link" href="#home">Home</a>
                     <a class="nav-item-link" href="#" onclick="openMembershipSelection(); return false;">Membership</a>
                     <a class="nav-item-link" href="#books-section">Books</a>
@@ -53,10 +53,25 @@
                     </button>
                     
                     <div id="auth-zone" class="flex items-center gap-2"></div>
+                    <!-- Hamburger for mobile/tablet -->
+                    <button class="hamburger-btn" id="hamburgerBtn" onclick="openMobileNav()" aria-label="Open menu">☰</button>
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav-drawer" id="mobileNavDrawer">
+        <div class="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+        <div class="mobile-nav-panel">
+            <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+            <a class="mobile-nav-link" href="#home" onclick="closeMobileNav()">🏠 Home</a>
+            <a class="mobile-nav-link" href="#books-section" onclick="closeMobileNav()">📚 Books</a>
+            <button class="mobile-nav-link" onclick="openMembershipSelection(); closeMobileNav();">👑 Membership</button>
+            <div class="mobile-nav-divider"></div>
+            <div id="mobile-auth-zone"></div>
+        </div>
+    </div>
     
     <!-- Hero Carousel Section -->
     <header id="home" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4000">
@@ -1475,6 +1490,24 @@
                     // reload page
                     location.reload();
                 }
+            }
+        }
+
+        // --- MOBILE NAV ---
+        function openMobileNav() {
+            document.getElementById('mobileNavDrawer').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            syncMobileAuthZone();
+        }
+        function closeMobileNav() {
+            document.getElementById('mobileNavDrawer').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        function syncMobileAuthZone() {
+            const desktopZone = document.getElementById('auth-zone');
+            const mobileZone = document.getElementById('mobile-auth-zone');
+            if (mobileZone && desktopZone) {
+                mobileZone.innerHTML = desktopZone.innerHTML;
             }
         }
 

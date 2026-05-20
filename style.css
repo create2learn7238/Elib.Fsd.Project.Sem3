@@ -639,3 +639,218 @@ body.light-mode .table-custom tbody tr:hover td { background: rgba(109,40,217,0.
 @media (max-width: 992px) {
     .admin-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ================================================
+   MOBILE & TABLET RESPONSIVE FIXES
+   ================================================ */
+
+/* --- HAMBURGER BUTTON --- */
+.hamburger-btn {
+    display: none;
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.hamburger-btn:hover { background: var(--surface2); border-color: var(--primary); }
+
+/* --- MOBILE DRAWER NAV --- */
+.mobile-nav-drawer {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2000;
+    pointer-events: none;
+}
+.mobile-nav-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.mobile-nav-panel {
+    position: absolute;
+    top: 0; right: 0;
+    width: min(320px, 88vw);
+    height: 100%;
+    background: var(--bg2);
+    border-left: 1px solid var(--border);
+    padding: 32px 24px;
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: auto;
+}
+.mobile-nav-drawer.open { pointer-events: all; }
+.mobile-nav-drawer.open .mobile-nav-overlay { opacity: 1; }
+.mobile-nav-drawer.open .mobile-nav-panel { transform: translateX(0); }
+.mobile-nav-close {
+    align-self: flex-end;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-bottom: 16px;
+}
+.mobile-nav-link {
+    display: block;
+    padding: 14px 18px;
+    border-radius: 14px;
+    font-size: 1rem; font-weight: 700;
+    color: var(--text); text-decoration: none;
+    background: var(--surface); border: 1px solid var(--border);
+    transition: all 0.2s; text-align: left;
+    cursor: pointer; font-family: inherit; width: 100%;
+}
+.mobile-nav-link:hover { background: var(--surface2); border-color: var(--primary); color: var(--text); }
+.mobile-nav-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+@media (max-width: 768px) {
+    /* Show hamburger, hide desktop nav links */
+    .hamburger-btn { display: flex !important; }
+    .desktop-nav-links { display: none !important; }
+
+    /* Navbar tightening */
+    .navbar-styled {
+        padding: 10px 16px !important;
+        border-radius: 20px !important;
+    }
+    .logo-label { font-size: 0.95rem !important; }
+    .logo-box { width: 36px !important; height: 36px !important; font-size: 1rem !important; }
+
+    /* Modals full-width on mobile */
+    .modal-dialog {
+        margin: 12px !important;
+        max-width: calc(100vw - 24px) !important;
+    }
+    .modal-content.content-card {
+        padding: 20px !important;
+        border-radius: 20px !important;
+    }
+    .modal-body { padding: 0 !important; }
+
+    /* Plan modal cards stack vertically */
+    .modal-xl .modal-body .row > [class*="col-"] {
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Book details modal */
+    #bookDetailsModal .modal-body .d-flex { flex-direction: column !important; }
+
+    /* Hero section */
+    .hero-content-wrapper {
+        text-align: center;
+        padding-top: 110px;
+        padding-bottom: 40px;
+    }
+    .hero-title { font-size: clamp(1.9rem, 8vw, 2.4rem) !important; }
+
+    /* Carousel images */
+    .carousel-item img {
+        min-height: 260px;
+        object-fit: cover;
+    }
+
+    /* Library tools: full width stacked */
+    .library-tools {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .search-bar-wrapper { width: 100% !important; }
+    .library-sort, .library-random-btn { width: 100% !important; }
+
+    /* Book cards: 2 per row on small mobile */
+    #bookGrid > [class*="col-"] {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+        padding: 6px !important;
+    }
+    .book-img { height: 180px !important; }
+    .book-card-body { padding: 12px !important; }
+    .book-card-body h5 { font-size: 0.85rem !important; }
+
+    /* Category pills: horizontal scroll */
+    .category-pills {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 8px !important;
+        gap: 6px !important;
+    }
+    .category-pill { padding: 7px 12px !important; font-size: 0.72rem !important; }
+
+    /* Checkout steps font */
+    .checkout-step { font-size: 0.65rem !important; padding: 6px 4px !important; }
+
+    /* Cart modal items */
+    .cart-item-row { flex-direction: column !important; gap: 6px !important; }
+
+    /* Admin KPI grid */
+    .admin-overview-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+    .kpi-value { font-size: 1.4rem !important; }
+
+    /* Admin tables: horizontal scroll */
+    .table-responsive { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .admin-table-search, .admin-tier-filter { min-width: unset !important; width: 100% !important; }
+
+    /* Profile detail grid */
+    .profile-detail-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Stat cards row */
+    .stat-card { padding: 16px !important; }
+
+    /* Paddings for main containers */
+    .container.py-32, .container-fluid.py-32 {
+        padding-top: 100px !important;
+        padding-bottom: 40px !important;
+    }
+
+    /* Payment modal QR section */
+    #qrImg { max-width: 180px !important; }
+
+    /* Auth zone buttons shrink */
+    #auth-zone .btn-primary-custom { font-size: 0.78rem !important; padding: 8px 14px !important; }
+
+    /* section padding */
+    .content-card { padding: 20px !important; }
+    .p-5 { padding: 1.25rem !important; }
+    .p-md-5 { padding: 1.25rem !important; }
+}
+
+/* Tablet (768px–991px) */
+@media (min-width: 769px) and (max-width: 991px) {
+    .hamburger-btn { display: flex !important; }
+    .desktop-nav-links { display: none !important; }
+
+    .navbar-styled { padding: 12px 22px !important; border-radius: 30px !important; }
+
+    /* Admin KPI 2-col */
+    .admin-overview-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+    /* Book cards 3-per-row on tablet */
+    #bookGrid > [class*="col-"] {
+        flex: 0 0 33.333% !important;
+        max-width: 33.333% !important;
+    }
+
+    /* Modals comfortable width */
+    .modal-dialog { margin: 24px auto !important; }
+}
+
+/* Very small phones */
+@media (max-width: 400px) {
+    #bookGrid > [class*="col-"] {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+    .admin-overview-grid { grid-template-columns: 1fr !important; }
+    .checkout-steps { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+}

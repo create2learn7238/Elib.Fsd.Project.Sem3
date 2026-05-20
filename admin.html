@@ -28,10 +28,23 @@
                         <span id="themeIcon">☀️</span>
                     </button>
                     <a href="index.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">Return to Site</a>
+                    <button class="hamburger-btn" id="hamburgerBtn" onclick="openMobileNav()" aria-label="Open menu">☰</button>
                 </div>
             </div>
         </div>
     </nav>
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav-drawer" id="mobileNavDrawer">
+        <div class="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+        <div class="mobile-nav-panel">
+            <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+            <a class="mobile-nav-link" href="index.html">🏠 Return to Site</a>
+            <a class="mobile-nav-link" href="admin-books.html">📚 Books</a>
+            <a class="mobile-nav-link" href="admin-users.html">👥 Users</a>
+            <a class="mobile-nav-link" href="admin-payments.html">💳 Payments</a>
+            <a class="mobile-nav-link" href="admin-carousel.html">🖼️ Slides</a>
+        </div>
+    </div>
 
     <!-- Main Dashboard Container -->
     <div class="container py-32">
@@ -199,6 +212,15 @@
             window.location.href = 'index.html';
         }
 
+
+        function openMobileNav() {
+            document.getElementById('mobileNavDrawer').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMobileNav() {
+            document.getElementById('mobileNavDrawer').classList.remove('open');
+            document.body.style.overflow = '';
+        }
         window.onload = () => {
             applySavedTheme();
             loadDashboardStats();

@@ -13,7 +13,7 @@ const fs = require('fs');
 // DIRECT CONFIGURATION
 // =========================================================
 const APP_CONFIG = {
-    PORT: 5000,
+    PORT: 10000,
     HOST: '0.0.0.0',
     DATABASE_URL: 'postgresql://neondb_owner:npg_v7AsBi1gJyMS@ep-jolly-cloud-ap23jjt4-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
     PUBLIC_BASE_URL: 'https://elib-fsd-project-sem3.onrender.com',
@@ -21,7 +21,7 @@ const APP_CONFIG = {
     EMAIL_PASS: 'ugzf nnmg wwfp jrrx',
     EMAIL_FROM: 'bookheaven2026@gmail.com',
     SMTP_HOST: 'smtp.gmail.com',
-    SMTP_PORT: 586,
+    SMTP_PORT: 587,
     SMTP_SECURE: false,
     LOG_OTP_TO_CONSOLE: false
 };
@@ -115,12 +115,18 @@ const getEmailConfig = () => {
 
 const createEmailTransporter = () => {
     const emailConfig = getEmailConfig();
-    return nodemailer.createTransport({
+    const transportOpts = {
         host: emailConfig.host,
         port: emailConfig.port,
-        secure: emailConfig.secure,
-        auth: { user: emailConfig.user, pass: emailConfig.pass }
-    });
+        secure: emailConfig.secure, // false for 587 (STARTTLS), true for 465
+        auth: { user: emailConfig.user, pass: emailConfig.pass },
+        tls: { rejectUnauthorized: false } // allow Render cloud proxy certs
+    };
+    // Port 587 must negotiate STARTTLS explicitly
+    if (emailConfig.port === 587) {
+        transportOpts.requireTLS = true;
+    }
+    return nodemailer.createTransport(transportOpts);
 };
 
 const verifyEmailTransport = async () => {

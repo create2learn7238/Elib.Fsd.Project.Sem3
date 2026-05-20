@@ -41,10 +41,20 @@
                         <span id="themeIcon">☀️</span>
                     </button>
                     <a href="admin.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">← Dashboard</a>
+                    <button class="hamburger-btn" id="hamburgerBtn" onclick="openMobileNav()" aria-label="Open menu">☰</button>
                 </div>
             </div>
         </div>
     </nav>
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav-drawer" id="mobileNavDrawer">
+        <div class="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+        <div class="mobile-nav-panel">
+            <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+            <a class="mobile-nav-link" href="admin.html">← Dashboard</a>
+            <a class="mobile-nav-link" href="index.html">🏠 Main Site</a>
+        </div>
+    </div>
 
     <!-- Main Content Area -->
     <div class="container py-32">
@@ -197,6 +207,15 @@
             document.getElementById('paymentCount').innerText = payments.length;
         }
 
+
+        function openMobileNav() {
+            document.getElementById('mobileNavDrawer').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMobileNav() {
+            document.getElementById('mobileNavDrawer').classList.remove('open');
+            document.body.style.overflow = '';
+        }
         window.onload = () => {
             applySavedTheme();
             loadPayments();

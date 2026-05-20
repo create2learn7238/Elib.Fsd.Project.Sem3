@@ -29,10 +29,21 @@
                     </button>
                     <a href="index.html" class="btn-primary-custom px-4 py-2 text-sm no-underline">Back to Library</a>
                     <button class="btn-primary-custom btn-pink px-4 py-2 text-sm" onclick="doLogout()">Logout</button>
+                    <button class="hamburger-btn" id="hamburgerBtn" onclick="openMobileNav()" aria-label="Open menu">☰</button>
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav-drawer" id="mobileNavDrawer">
+        <div class="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+        <div class="mobile-nav-panel">
+            <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+            <a class="mobile-nav-link" href="index.html">🏠 Back to Library</a>
+            <button class="mobile-nav-link" onclick="doLogout()">🚪 Logout</button>
+        </div>
+    </div>
 
     <!-- Main Profile Container -->
     <div class="container py-32">
