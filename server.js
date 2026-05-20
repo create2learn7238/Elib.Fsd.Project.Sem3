@@ -19,7 +19,7 @@ const APP_CONFIG = {
     PUBLIC_BASE_URL: 'https://elib-fsd-project-sem3.onrender.com',
     EMAIL_USER: 'dixitp1311@gmail.com',
     EMAIL_PASS: 'ugzf nnmg wwfp jrrx',
-    EMAIL_FROM: 'bookheaven2026@gmail.com',
+    EMAIL_FROM: 'dixitp1311@gmail.com',
     SMTP_HOST: 'smtp.gmail.com',
     SMTP_PORT: 465,
     SMTP_SECURE: true,
