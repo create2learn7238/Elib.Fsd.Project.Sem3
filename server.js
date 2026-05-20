@@ -21,8 +21,8 @@ const APP_CONFIG = {
     EMAIL_PASS: 'ugzf nnmg wwfp jrrx',
     EMAIL_FROM: 'bookheaven2026@gmail.com',
     SMTP_HOST: 'smtp.gmail.com',
-    SMTP_PORT: 587,
-    SMTP_SECURE: false,
+    SMTP_PORT: 465,
+    SMTP_SECURE: true,
     LOG_OTP_TO_CONSOLE: false
 };
 
@@ -115,18 +115,13 @@ const getEmailConfig = () => {
 
 const createEmailTransporter = () => {
     const emailConfig = getEmailConfig();
-    const transportOpts = {
+    return nodemailer.createTransport({
         host: emailConfig.host,
-        port: emailConfig.port,
-        secure: emailConfig.secure, // false for 587 (STARTTLS), true for 465
+        port: emailConfig.port,   // 465 = implicit SSL (works on Render free tier)
+        secure: emailConfig.secure, // true for 465
         auth: { user: emailConfig.user, pass: emailConfig.pass },
-        tls: { rejectUnauthorized: false } // allow Render cloud proxy certs
-    };
-    // Port 587 must negotiate STARTTLS explicitly
-    if (emailConfig.port === 587) {
-        transportOpts.requireTLS = true;
-    }
-    return nodemailer.createTransport(transportOpts);
+        tls: { rejectUnauthorized: false }
+    });
 };
 
 const verifyEmailTransport = async () => {
